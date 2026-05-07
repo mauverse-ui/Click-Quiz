@@ -3,81 +3,115 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Social Quiz — Find Out What Others Are Thinking</title>
-  <meta name="description" content="Pick a side. See how the world votes. Quick A/B polls on sporting events, world news, and hot takes." />
+  <title>Social Quiz — Find Out What Others Think</title>
+  <meta name="description" content="Pick a side. See what everyone else thinks. Quick A/B polls on sport and big moments." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!--
+    ============================================================
+    Social Quiz — Foundational starter file
+    ============================================================
+    Concept: A/B opinion polls themed around sport, world events
+    and hot takes. Every answer reveals how others voted.
+
+    What this file demonstrates:
+      1. Working A/B quiz engine (landing → questions → results)
+      2. Quiz selector (dropdown) so you can swap between quiz packs
+      3. After-answer reveal: fictive vote percentages as bar chart
+      4. Three ad placement zones (top banner, mid-content, sticky footer)
+      5. A tracking layer that logs every event you'll later send to your DB
+      6. Mobile-responsive sporty layout
+      7. UTM parameter capture for traffic source attribution
+
+    How to extend it (next steps):
+      - Replace QUIZZES with a fetch() call to your Supabase database
+      - Replace fictive vote totals with real aggregated counts
+      - Replace track() with a fetch() POST to your tracking endpoint
+      - Replace .ad-slot placeholders with real ad network code
+    ============================================================
+  -->
 
   <style>
     /* ---------- Reset + base ---------- */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #0a0e1a;
       color: #fff;
       line-height: 1.5;
       min-height: 100%;
       overflow-x: hidden;
     }
+    body { padding-bottom: 90px; /* sticky footer ad */ }
 
-    /* ---------- Background sport vibe ---------- */
+    /* sport-arena background vibe */
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background:
-        radial-gradient(circle at 20% 10%, rgba(255, 51, 51, 0.15), transparent 50%),
-        radial-gradient(circle at 80% 90%, rgba(0, 200, 255, 0.12), transparent 50%),
+        radial-gradient(circle at 18% 8%, rgba(255, 51, 51, 0.18), transparent 50%),
+        radial-gradient(circle at 82% 92%, rgba(0, 200, 255, 0.10), transparent 50%),
         linear-gradient(180deg, #0a0e1a 0%, #131826 100%);
       z-index: -2;
     }
     body::after {
       content: '';
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background-image:
         repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 30px);
       z-index: -1;
       pointer-events: none;
     }
 
-    .container {
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 20px 16px 60px;
+    .container { max-width: 820px; margin: 0 auto; padding: 16px; }
+
+    /* ---------- Top ad ---------- */
+    .ad-slot {
+      background: repeating-linear-gradient(
+        45deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 10px,
+        rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px
+      );
+      border: 1px dashed rgba(255,255,255,0.15);
+      color: #6f7a8d;
+      font-size: 12px;
+      text-align: center;
+      padding: 14px;
+      border-radius: 10px;
+      margin: 16px 0;
+    }
+    .ad-slot.top    { min-height: 90px; }
+    .ad-slot.mid    { min-height: 250px; }
+    .ad-slot.footer {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      margin: 0; border-radius: 0; min-height: 60px;
+      background: #0a0e1a; border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
     }
 
     /* ---------- Header ---------- */
     header {
       text-align: center;
-      padding: 30px 0 20px;
+      padding: 28px 0 14px;
     }
-
     .logo-row {
-      display: inline-flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
+      display: inline-flex; align-items: center; gap: 12px;
+      margin-bottom: 4px;
     }
-
     .logo-mark {
-      width: 44px;
-      height: 44px;
+      width: 44px; height: 44px;
       background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
       clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-flex; align-items: center; justify-content: center;
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 28px;
-      color: #fff;
+      font-size: 26px; color: #fff;
       transform: skewX(-8deg);
       box-shadow: 0 4px 14px rgba(255, 51, 68, 0.35);
     }
-
-    h1.title {
+    h1.brand-title {
       font-family: 'Bebas Neue', sans-serif;
       font-size: clamp(48px, 8vw, 72px);
       letter-spacing: 2px;
@@ -87,16 +121,44 @@
       color: transparent;
       line-height: 1;
     }
-
-    .tagline {
-      font-size: clamp(15px, 2.2vw, 18px);
+    .brand-tagline {
+      font-size: clamp(14px, 2.2vw, 18px);
       color: #8a96aa;
       font-weight: 600;
       letter-spacing: 0.5px;
       margin-top: 6px;
     }
+    .brand-tagline .accent { color: #ff5544; }
 
-    .tagline .accent { color: #ff5544; }
+    /* ---------- Take-another-quiz CTA ---------- */
+    .another-quiz-row {
+      display: flex;
+      justify-content: center;
+      margin: 28px 0 8px;
+    }
+    .btn-another-quiz {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.18);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 2px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn-another-quiz .here {
+      background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .btn-another-quiz:hover {
+      transform: translateY(-2px);
+      border-color: #ff5544;
+      box-shadow: 0 12px 28px rgba(255, 51, 68, 0.25);
+    }
 
     /* ---------- Quiz card ---------- */
     .quiz-card {
@@ -105,33 +167,22 @@
       border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 20px;
       padding: 28px 22px;
-      margin-top: 24px;
+      margin-top: 18px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     }
-
     .quiz-meta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; flex-wrap: wrap;
     }
-
     .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      display: inline-flex; align-items: center; gap: 6px;
       background: rgba(255, 51, 68, 0.12);
       color: #ff5544;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      padding: 6px 12px;
-      border-radius: 999px;
+      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+      padding: 6px 12px; border-radius: 999px;
       text-transform: uppercase;
       border: 1px solid rgba(255, 51, 68, 0.25);
     }
-
     .badge.live::before {
       content: '';
       width: 7px; height: 7px;
@@ -139,350 +190,650 @@
       border-radius: 50%;
       animation: pulse 1.4s infinite;
     }
-
+    .badge.neutral { background: rgba(255,255,255,0.06); color: #b8c5d6; border-color: rgba(255,255,255,0.12); }
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.85); }
     }
 
-    .vote-count {
-      font-size: 12px;
-      color: #6f7a8d;
-      font-weight: 600;
+    .progress-label {
+      font-size: 12px; color: #6f7a8d; font-weight: 600;
+      margin-left: auto;
     }
 
+    .progress-wrap {
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px; height: 6px; overflow: hidden;
+      margin: 6px 0 18px;
+    }
+    .progress-fill {
+      background: linear-gradient(90deg, #ff3344 0%, #ff7700 100%);
+      height: 100%; width: 0%;
+      transition: width 280ms ease;
+    }
+
+    .question-pre {
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      color: #ff5544;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
     .question {
-      font-size: clamp(22px, 4vw, 30px);
+      font-size: clamp(20px, 3.2vw, 26px);
       font-weight: 800;
-      line-height: 1.25;
-      margin: 8px 0 22px;
+      line-height: 1.3;
+      margin: 6px 0 22px;
       color: #f5f8ff;
     }
 
-    /* ---------- VS layout ---------- */
+    /* ---------- Match-up A/B ---------- */
+    /* Flexbox so the two banners can physically resize to match the vote split */
     .matchup {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 12px;
+      display: flex;
+      gap: 10px;
       align-items: stretch;
+      min-height: 220px;
     }
-
-    @media (max-width: 540px) {
-      .matchup { grid-template-columns: 1fr; }
-      .vs-divider { transform: rotate(0deg); padding: 4px 0; }
+    @media (max-width: 600px) {
+      .matchup { gap: 6px; min-height: 200px; }
+      .vs-divider { padding: 0 2px; font-size: 18px; }
     }
 
     .option-banner {
+      flex: 1 1 0;          /* equal width before voting */
+      min-width: 0;         /* allow shrinking below content width */
       position: relative;
       cursor: pointer;
       border-radius: 16px;
       overflow: hidden;
-      min-height: 200px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 18px;
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 16px;
       border: 2px solid transparent;
-      transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: flex-grow 1s cubic-bezier(0.2, 0.9, 0.3, 1),
+                  transform 0.2s ease, border-color 0.2s ease,
+                  box-shadow 0.2s ease, opacity 0.2s ease;
       isolation: isolate;
+      text-align: left;
+    }
+    @media (max-width: 600px) {
+      .option-banner { padding: 14px 10px; }
     }
 
+    /* Top row: letter (and YOU tag if chosen) */
+    .option-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
+    }
+    .option-percent {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(56px, 14vw, 110px);
+      letter-spacing: 1px;
+      color: #fff;
+      line-height: 0.95;
+      text-align: center;
+      margin: auto 0;
+      opacity: 0;
+      transform: scale(0.7);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      text-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    .option-banner.voted .option-percent {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .option-banner .you-tag {
+      display: none;
+    }
+    .option-banner.you .you-tag { display: inline-block; }
     .option-banner:hover {
       transform: translateY(-3px);
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
     }
-
-    .option-banner.team-a {
-      background: linear-gradient(135deg, #c8102e 0%, #7a0a1d 100%);
-    }
-    .option-banner.team-b {
-      background: linear-gradient(135deg, #003478 0%, #001a3d 100%);
-    }
-
+    .option-banner.team-a { background: linear-gradient(135deg, #c8102e 0%, #7a0a1d 100%); }
+    .option-banner.team-b { background: linear-gradient(135deg, #003478 0%, #001a3d 100%); }
     .option-banner::before {
       content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        repeating-linear-gradient(135deg,
-          rgba(255,255,255,0.04) 0 8px,
-          transparent 8px 24px);
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(135deg,
+        rgba(255,255,255,0.04) 0 8px, transparent 8px 24px);
       z-index: -1;
     }
-
     .option-banner.team-a:hover { border-color: #ff5566; }
     .option-banner.team-b:hover { border-color: #4a90ff; }
+    .option-banner.locked { cursor: default; transform: none; }
 
-    .team-emblem {
-      width: 60px;
-      height: 60px;
-      background: rgba(255,255,255,0.12);
-      border: 2px solid rgba(255,255,255,0.3);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .option-letter {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 26px;
+      font-size: 22px;
+      letter-spacing: 1px;
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.18);
       color: #fff;
-      align-self: flex-start;
-      margin-bottom: auto;
+      flex-shrink: 0;
     }
-
-    .team-name {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(28px, 5vw, 38px);
-      letter-spacing: 1.5px;
+    .option-text {
+      font-size: clamp(16px, 2.6vw, 20px);
+      font-weight: 800;
+      letter-spacing: 0.3px;
       color: #fff;
-      line-height: 1;
+      line-height: 1.25;
       text-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
 
-    .team-sub {
-      font-size: 12px;
-      color: rgba(255,255,255,0.75);
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
-
     .vs-divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 28px;
+      font-size: 24px;
       color: #ff5544;
       letter-spacing: 2px;
-      padding: 0 6px;
+      padding: 0 4px;
     }
 
-    /* ---------- Result bar chart ---------- */
+    /* ---------- Results bar chart ---------- */
     .results {
       display: none;
-      margin-top: 24px;
-      animation: fadeUp 0.5s ease;
+      margin-top: 22px;
+      animation: fadeUp 0.4s ease;
     }
-
     .results.visible { display: block; }
-
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .results-title {
-      font-size: 13px;
-      color: #6f7a8d;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-      text-align: center;
-    }
-
-    .bar-row {
-      margin-bottom: 14px;
-    }
-
-    .bar-label {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 700;
-      font-size: 14px;
-      margin-bottom: 6px;
-    }
-
-    .bar-label .name { display: flex; align-items: center; gap: 8px; }
-
     .you-tag {
-      background: #ff5544;
-      color: #fff;
-      font-size: 10px;
-      padding: 2px 7px;
-      border-radius: 4px;
-      letter-spacing: 0.8px;
+      background: #ff5544; color: #fff;
+      font-size: 10px; padding: 2px 7px;
+      border-radius: 4px; letter-spacing: 0.8px;
+      font-weight: 800;
     }
 
-    .bar-track {
-      height: 28px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 8px;
-      overflow: hidden;
-      position: relative;
+    .vote-summary {
+      text-align: center;
+      color: #8a96aa;
+      font-size: 13px;
+      margin-top: 10px;
     }
-
-    .bar-fill {
-      height: 100%;
-      width: 0;
-      transition: width 1.2s cubic-bezier(0.2, 0.9, 0.3, 1);
-      border-radius: 8px;
-    }
-
-    .bar-fill.a { background: linear-gradient(90deg, #c8102e 0%, #ff3344 100%); }
-    .bar-fill.b { background: linear-gradient(90deg, #003478 0%, #4a90ff 100%); }
+    .vote-summary strong { color: #fff; }
 
     .next-row {
-      display: flex;
-      justify-content: center;
-      margin-top: 24px;
+      display: flex; justify-content: center;
+      margin-top: 22px;
     }
-
     .btn-next {
       background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
-      color: #fff;
-      border: none;
+      color: #fff; border: none;
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 20px;
-      letter-spacing: 2px;
-      padding: 14px 32px;
-      border-radius: 12px;
+      font-size: 20px; letter-spacing: 2px;
+      padding: 14px 32px; border-radius: 12px;
       cursor: pointer;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       box-shadow: 0 8px 20px rgba(255, 51, 68, 0.3);
     }
-
     .btn-next:hover {
       transform: translateY(-2px);
       box-shadow: 0 12px 28px rgba(255, 51, 68, 0.45);
     }
 
+    /* ---------- Recap screen ---------- */
+    .recap-hero { text-align: center; padding: 6px 0 8px; }
+    .recap-hero .emoji { font-size: 48px; }
+    .recap-hero h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(28px, 5vw, 40px);
+      letter-spacing: 2px;
+      margin-top: 10px;
+    }
+    .recap-hero p { color: #8a96aa; margin-top: 4px; font-size: 15px; }
+
+    .recap-list { margin-top: 18px; }
+    .recap-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .recap-row .q { color: #d6dee8; flex: 1; padding-right: 12px; }
+    .recap-row .a {
+      font-weight: 800; font-size: 12px;
+      padding: 4px 10px; border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+    .recap-row .a.a { background: rgba(255, 51, 68, 0.18); color: #ff8090; }
+    .recap-row .a.b { background: rgba(74, 144, 255, 0.18); color: #7dafff; }
+
+    .recap-actions {
+      display: flex; gap: 10px; justify-content: center;
+      flex-wrap: wrap; margin-top: 18px;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.12);
+      font-family: inherit;
+      font-size: 14px; font-weight: 700;
+      padding: 12px 20px; border-radius: 10px;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { border-color: #ff5544; }
+
     /* ---------- Footer ---------- */
     footer {
       text-align: center;
-      margin-top: 40px;
       color: #4a5568;
       font-size: 12px;
+      padding: 24px 16px 80px;
     }
+    footer a { color: #6c7596; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
+  <!-- ========== TOP AD SLOT ========== -->
   <div class="container">
+    <div class="ad-slot top" id="ad-slot-top">
+      [ Ad Slot — Top Banner 728×90 / 320×50 mobile ]
+    </div>
+  </div>
 
-    <header>
-      <div class="logo-row">
-        <div class="logo-mark">SQ</div>
-      </div>
-      <h1 class="title">SOCIAL QUIZ</h1>
-      <p class="tagline">Find out what <span class="accent">others are thinking</span></p>
-    </header>
+  <header>
+    <div class="logo-row">
+      <div class="logo-mark">SQ</div>
+    </div>
+    <h1 class="brand-title">SOCIAL QUIZ</h1>
+    <p class="brand-tagline">Find out what <span class="accent">others think!</span></p>
+  </header>
 
-    <main class="quiz-card" id="quizCard">
+  <main class="container">
+
+    <!-- ========== Quiz card ========== -->
+    <section id="screen-quiz" class="quiz-card">
       <div class="quiz-meta">
-        <span class="badge live">Live Now</span>
-        <span class="badge">Champions League · Final</span>
-        <span class="vote-count" id="voteCount">12,847 votes</span>
+        <span class="badge live">Live</span>
+        <span class="badge neutral" id="quiz-context">Aston Villa 2 – 0 Forest · Europa League SF</span>
       </div>
 
-      <h2 class="question">Who's lifting the trophy tonight?</h2>
+      <div class="question-pre" id="question-pre">Question 1</div>
+      <h2 class="question" id="question-text">Loading…</h2>
 
-      <div class="matchup">
-
-        <div class="option-banner team-a" data-team="a" onclick="selectOption('a')">
-          <div class="team-emblem">RM</div>
-          <div>
-            <div class="team-name">Real Madrid</div>
-            <div class="team-sub">Spain · 14× champions</div>
+      <div class="matchup" id="matchup">
+        <button class="option-banner team-a" id="optA" onclick="selectOption('a')">
+          <div class="option-top">
+            <span class="option-letter">A</span>
+            <span class="you-tag" id="youTagA">YOU</span>
           </div>
-        </div>
+          <div class="option-percent" id="pctA">0%</div>
+          <div class="option-text-wrap">
+            <span class="option-text" id="optA-text"></span>
+          </div>
+        </button>
 
         <div class="vs-divider">VS</div>
 
-        <div class="option-banner team-b" data-team="b" onclick="selectOption('b')">
-          <div class="team-emblem">MC</div>
-          <div>
-            <div class="team-name">Man City</div>
-            <div class="team-sub">England · Defending champs</div>
+        <button class="option-banner team-b" id="optB" onclick="selectOption('b')">
+          <div class="option-top">
+            <span class="option-letter">B</span>
+            <span class="you-tag" id="youTagB">YOU</span>
           </div>
-        </div>
-
+          <div class="option-percent" id="pctB">0%</div>
+          <div class="option-text-wrap">
+            <span class="option-text" id="optB-text"></span>
+          </div>
+        </button>
       </div>
 
       <section class="results" id="results">
-        <div class="results-title">— How everyone voted —</div>
-
-        <div class="bar-row">
-          <div class="bar-label">
-            <span class="name">Real Madrid <span class="you-tag" id="youTagA" style="display:none;">YOU</span></span>
-            <span id="pctA">0%</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill a" id="barA"></div>
-          </div>
-        </div>
-
-        <div class="bar-row">
-          <div class="bar-label">
-            <span class="name">Man City <span class="you-tag" id="youTagB" style="display:none;">YOU</span></span>
-            <span id="pctB">0%</span>
-          </div>
-          <div class="bar-track">
-            <div class="bar-fill b" id="barB"></div>
-          </div>
-        </div>
+        <div class="vote-summary"><strong id="voteTotal">0</strong> people have voted on this question</div>
 
         <div class="next-row">
-          <button class="btn-next" onclick="nextQuestion()">Next Question →</button>
+          <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
         </div>
       </section>
-    </main>
 
-    <footer>
-      © Social Quiz · Two choices. One vote. See where you stand.
-    </footer>
+      <!-- Mid-quiz ad -->
+      <div class="ad-slot mid hidden" id="ad-slot-mid">
+        [ Ad Slot — In-Quiz Native 300×250 ]
+      </div>
+    </section>
+
+    <!-- ========== Take-another-quiz CTA ========== -->
+    <div class="another-quiz-row">
+      <button class="btn-another-quiz" onclick="goToNextQuiz()">
+        Take another quiz <span class="here">HERE</span>
+      </button>
+    </div>
+
+    <!-- ========== Recap screen ========== -->
+    <section id="screen-recap" class="quiz-card hidden">
+      <div class="recap-hero">
+        <div class="emoji">🏆</div>
+        <h2 id="recap-title">YOU'VE HAD YOUR SAY</h2>
+        <p id="recap-blurb">Here's what you picked — and where the crowd landed.</p>
+      </div>
+
+      <div class="recap-list" id="recap-list"><!-- injected --></div>
+
+      <!-- Result page is the highest-engagement page = best ad placement -->
+      <div class="ad-slot mid" id="ad-slot-result">
+        [ Ad Slot — Result Page 300×250 / 336×280 ]
+      </div>
+
+      <div class="recap-actions">
+        <button class="btn-next" onclick="goToNextQuiz()">Try Next Quiz →</button>
+        <button class="btn-secondary" onclick="restart()">Restart this quiz</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>© 2026 Social Quiz · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Contact</a></p>
+    <p style="margin-top:6px;">Session ID: <span id="session-id-display">—</span></p>
+  </footer>
+
+  <!-- ========== STICKY FOOTER AD SLOT ========== -->
+  <div class="ad-slot footer" id="ad-slot-footer">
+    [ Ad Slot — Sticky Footer 320×50 / 728×90 ]
   </div>
 
   <script>
-    // Mock vote data (would come from backend in production)
-    const QUIZ = {
-      voteA: 7234,
-      voteB: 5613
+  /* ============================================================
+     Social Quiz — frontend logic
+     ============================================================ */
+
+  /* ---------- 1. CONFIG ---------- */
+  const CONFIG = {
+    midAdAfterQuestion: 3,
+    questionsApiUrl: null,    // future Supabase endpoint
+    trackingApiUrl: null,     // future tracking endpoint
+  };
+
+  /* ---------- 2. QUIZ POOL ----------
+     Each quiz has its own context badge + question list.
+     A question is { id, pre, text, a, b, votesA, votesB }
+     where votes are fictive seed totals used for the bar chart.
+  */
+  const QUIZZES = {
+    villa_forest_eu: {
+      id: 'villa_forest_eu',
+      title: 'Villa 2-0 Forest · Europa SF',
+      context: 'Aston Villa 2 – 0 Forest · Europa League SF',
+      questions: [
+        {
+          id: 'vf1',
+          pre: 'The Hero',
+          text: 'John McGinn scored two identical screamers in 3 minutes. Was this his best performance in a Villa shirt?',
+          a: "Yes, pure captain's display!",
+          b: 'No, he\u2019s had better.',
+          votesA: 8421, votesB: 2317
+        },
+        {
+          id: 'vf2',
+          pre: 'The Turning Point',
+          text: 'Prince William was seen celebrating wildly after Buendía\u2019s penalty. Did the 2nd goal officially break Forest?',
+          a: 'Yes, game over then.',
+          b: 'No, Forest still had hope.',
+          votesA: 6798, votesB: 3104
+        },
+        {
+          id: 'vf3',
+          pre: 'Tactical Masterclass',
+          text: 'Unai Emery is hunting his 5th Europa League title. Is he currently the best tactical manager in the world?',
+          a: "Absolutely, he's a genius.",
+          b: 'Top 5, but not #1.',
+          votesA: 5240, votesB: 5612
+        },
+        {
+          id: 'vf4',
+          pre: 'Forest\u2019s Defeat',
+          text: 'Forest were on a 10-game unbeaten run before tonight. Was this a tactical failure or just Villa\u2019s home atmosphere?',
+          a: 'Emery out-coached them.',
+          b: 'The Villa Park noise won it.',
+          votesA: 6112, votesB: 4380
+        },
+        {
+          id: 'vf5',
+          pre: 'The Final',
+          text: 'Villa faces Freiburg in the final in Istanbul. Will the trophy finally come back to Birmingham?',
+          a: "It's coming home!",
+          b: 'Freiburg will be too tough.',
+          votesA: 9135, votesB: 1809
+        }
+      ]
+    },
+    // Placeholder for future quizzes — duplicate the structure above:
+    sample_world: {
+      id: 'sample_world',
+      title: 'World news · Hot takes',
+      context: 'World News · Coming soon',
+      questions: [
+        {
+          id: 'sw1',
+          pre: 'Hot Take',
+          text: 'Add your next set of opinion-poll questions here.',
+          a: 'Yes, totally.',
+          b: 'No way.',
+          votesA: 1200, votesB: 980
+        }
+      ]
+    }
+  };
+
+  /* ---------- 3. SESSION + TRACKING ---------- */
+  const session = {
+    id: 'sess_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now(),
+    landedAt: Date.now(),
+    quizId: null,
+    questionPath: [],
+    answers: [],            // { questionId, choice: 'a'|'b' }
+    utm: getUtmParams(),
+  };
+  document.getElementById('session-id-display').textContent = session.id;
+
+  function getUtmParams() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+      source:   p.get('utm_source')   || 'direct',
+      campaign: p.get('utm_campaign') || null,
+      medium:   p.get('utm_medium')   || null,
+      content:  p.get('utm_content')  || null,
+      term:     p.get('utm_term')     || null,
     };
+  }
 
-    function selectOption(choice) {
-      // disable both banners
-      document.querySelectorAll('.option-banner').forEach(b => {
-        b.style.pointerEvents = 'none';
-        b.style.opacity = '0.85';
-      });
+  function track(eventName, payload = {}) {
+    const event = {
+      event: eventName,
+      session_id: session.id,
+      quiz_id: session.quizId,
+      ts: Date.now(),
+      ...payload,
+    };
+    console.log('[track]', event);
+    // When you have a tracking endpoint, uncomment:
+    // if (CONFIG.trackingApiUrl) {
+    //   fetch(CONFIG.trackingApiUrl, {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(event),
+    //     keepalive: true,
+    //   }).catch(() => {});
+    // }
+  }
 
-      // mark user's pick
-      const total = QUIZ.voteA + QUIZ.voteB + 1;
-      if (choice === 'a') {
-        QUIZ.voteA += 1;
-        document.getElementById('youTagA').style.display = 'inline-block';
-        document.querySelector('[data-team="a"]').style.borderColor = '#ff5544';
-        document.querySelector('[data-team="a"]').style.opacity = '1';
-      } else {
-        QUIZ.voteB += 1;
-        document.getElementById('youTagB').style.display = 'inline-block';
-        document.querySelector('[data-team="b"]').style.borderColor = '#4a90ff';
-        document.querySelector('[data-team="b"]').style.opacity = '1';
-      }
+  track('session_start', { utm: session.utm, referrer: document.referrer });
 
-      const pctA = Math.round((QUIZ.voteA / total) * 100);
-      const pctB = 100 - pctA;
+  /* ---------- 4. QUIZ ENGINE ---------- */
+  let currentQuiz = null;
+  let currentIndex = 0;
+  let questionShownAt = 0;
 
-      // show results
-      document.getElementById('results').classList.add('visible');
+  function onQuizChange(quizId) {
+    startQuiz(quizId);
+  }
 
-      // animate bars after a tick
-      setTimeout(() => {
-        document.getElementById('barA').style.width = pctA + '%';
-        document.getElementById('barB').style.width = pctB + '%';
-        document.getElementById('pctA').textContent = pctA + '%';
-        document.getElementById('pctB').textContent = pctB + '%';
-        document.getElementById('voteCount').textContent =
-          total.toLocaleString() + ' votes';
-      }, 80);
+  function startQuiz(quizId) {
+    currentQuiz = QUIZZES[quizId];
+    if (!currentQuiz) return;
+    session.quizId = quizId;
+    session.answers = [];
+    session.questionPath = [];
+    currentIndex = 0;
+
+    document.getElementById('quiz-context').textContent = currentQuiz.context;
+
+    document.getElementById('screen-recap').classList.add('hidden');
+    document.getElementById('screen-quiz').classList.remove('hidden');
+    document.getElementById('ad-slot-mid').classList.add('hidden');
+
+    track('quiz_started', {
+      quiz_id: quizId,
+      question_count: currentQuiz.questions.length,
+    });
+
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    const q = currentQuiz.questions[currentIndex];
+    questionShownAt = Date.now();
+
+    document.getElementById('question-pre').textContent = q.pre || ('Question ' + (currentIndex + 1));
+    document.getElementById('question-text').textContent = q.text;
+
+    document.getElementById('optA-text').textContent = q.a;
+    document.getElementById('optB-text').textContent = q.b;
+
+    // reset banner state — back to 50/50 split
+    ['optA','optB'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('locked', 'voted', 'you');
+      el.style.pointerEvents = 'auto';
+      el.style.opacity = '1';
+      el.style.borderColor = 'transparent';
+      el.style.flexGrow = '1';
+    });
+
+    // hide results, reset percentage badges
+    const r = document.getElementById('results');
+    r.classList.remove('visible');
+    document.getElementById('pctA').textContent = '0%';
+    document.getElementById('pctB').textContent = '0%';
+
+    // mid-quiz ad — show after the configured question, then keep visible
+    const midAd = document.getElementById('ad-slot-mid');
+    if (currentIndex + 1 >= CONFIG.midAdAfterQuestion) {
+      midAd.classList.remove('hidden');
     }
 
-    function nextQuestion() {
-      alert('Next question would load here. (Hook this up to your question pool.)');
+    track('question_shown', {
+      question_id: q.id,
+      question_index: currentIndex,
+    });
+  }
+
+  function selectOption(choice) {
+    const q = currentQuiz.questions[currentIndex];
+    const timeSpent = Date.now() - questionShownAt;
+
+    // lock banners + reveal results state
+    ['optA','optB'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.pointerEvents = 'none';
+      el.classList.add('locked', 'voted');
+      el.style.opacity = '0.92';
+    });
+
+    // increment fictive vote total + outline + YOU tag for chosen side
+    if (choice === 'a') {
+      q.votesA += 1;
+      document.getElementById('optA').classList.add('you');
+      document.getElementById('optA').style.borderColor = '#ff5544';
+      document.getElementById('optA').style.opacity = '1';
+    } else {
+      q.votesB += 1;
+      document.getElementById('optB').classList.add('you');
+      document.getElementById('optB').style.borderColor = '#4a90ff';
+      document.getElementById('optB').style.opacity = '1';
     }
+
+    const total = q.votesA + q.votesB;
+    const pctA = Math.round((q.votesA / total) * 100);
+    const pctB = 100 - pctA;
+
+    // record answer
+    session.answers.push({ questionId: q.id, choice, pctA, pctB });
+    session.questionPath.push(q.id);
+
+    track('question_answered', {
+      question_id: q.id,
+      question_index: currentIndex,
+      choice,
+      pct_a: pctA,
+      pct_b: pctB,
+      time_spent_ms: timeSpent,
+    });
+
+    // show + animate results
+    document.getElementById('voteTotal').textContent = total.toLocaleString();
+    document.getElementById('results').classList.add('visible');
+
+    setTimeout(() => {
+      // Boxes physically resize to match the vote split (e.g. 70/30)
+      // flex-grow accepts unitless numbers, so the ratio works directly
+      document.getElementById('optA').style.flexGrow = pctA;
+      document.getElementById('optB').style.flexGrow = pctB;
+      document.getElementById('pctA').textContent = pctA + '%';
+      document.getElementById('pctB').textContent = pctB + '%';
+    }, 80);
+
+    document.getElementById('nextBtn').textContent = 'Next Question →';
+  }
+
+  function nextQuestion() {
+    currentIndex++;
+    // continuous stream: when we reach the end of the pool, wrap around
+    if (currentIndex >= currentQuiz.questions.length) {
+      currentIndex = 0;
+      track('quiz_loop', { quiz_id: session.quizId });
+    }
+    renderQuestion();
+    window.scrollTo({ top: document.querySelector('.quiz-card').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function restart() {
+    track('restart_clicked');
+    startQuiz(session.quizId);
+  }
+
+  function goToNextQuiz() {
+    track('next_quiz_clicked');
+    const ids = Object.keys(QUIZZES);
+    const idx = ids.indexOf(session.quizId);
+    const next = ids[(idx + 1) % ids.length];
+    startQuiz(next);
+  }
+
+  // Track when visitors leave (drop-off attribution)
+  window.addEventListener('beforeunload', () => {
+    track('session_end', {
+      duration_ms: Date.now() - session.landedAt,
+      questions_answered: session.answers.length,
+    });
+  });
+
+  // Boot
+  startQuiz('villa_forest_eu');
   </script>
-
 </body>
 </html>
