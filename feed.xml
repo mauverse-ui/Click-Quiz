@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Social Quiz — Find Out What Others Think</title>
+    <link>https://click-quiz.com/</link>
+    <description>Pick a side. See what everyone else thinks. New A/B opinion quizzes drop on each trending topic — match the crowd to score.</description>
+    <language>en-us</language>
+    <copyright>© 2026 Social Quiz</copyright>
+    <generator>quiz-my-life-static</generator>
+    <atom:link href="https://click-quiz.com/feed.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 09 May 2026 10:30:00 +0000</lastBuildDate>
+    <pubDate>Sat, 09 May 2026 10:30:00 +0000</pubDate>
+    <ttl>60</ttl>
+    <image>
+      <url>https://click-quiz.com/favicon.ico</url>
+      <title>Social Quiz — Find Out What Others Think</title>
+      <link>https://click-quiz.com/</link>
+    </image>
+
+    <item>
+      <title>🦸 Sci-Fi, Fantasy &amp; Superheroes</title>
+      <link>https://click-quiz.com/#/q/sci-fi-fantasy-heroes</link>
+      <guid isPermaLink="true">https://click-quiz.com/#/q/sci-fi-fantasy-heroes</guid>
+      <pubDate>Sat, 09 May 2026 09:53:14 +0000</pubDate>
+      <category>Trending now</category>
+      <dc:creator>Social Quiz</dc:creator>
+      <description>Settle the great geek debates. Pick a side — match the crowd. Ten true-or-false A/B questions across Marvel, DC, Star Wars, Lord of the Rings, Harry Potter, Asimov, Game of Thrones and more.</description>
+    </item>
+
+    <item>
+      <title>🦠 The Hanta Virus</title>
+      <link>https://click-quiz.com/#/q/hanta-virus</link>
+      <guid isPermaLink="true">https://click-quiz.com/#/q/hanta-virus</guid>
+      <pubDate>Fri, 08 May 2026 19:55:59 +0000</pubDate>
+      <category>Health · Quiz</category>
+      <dc:creator>Social Quiz</dc:creator>
+      <description>Match the crowd on these true-or-false facts about Hantavirus — transmission, symptoms, treatment, and the cleaning mistakes that actually spread it.</description>
+    </item>
+
+    <item>
+      <title>⚽ Villa 2-0 Forest · Europa SF</title>
+      <link>https://click-quiz.com/#/q/villa-forest-eu</link>
+      <guid isPermaLink="true">https://click-quiz.com/#/q/villa-forest-eu</guid>
+      <pubDate>Fri, 08 May 2026 19:55:59 +0000</pubDate>
+      <category>Sport · Live</category>
+      <dc:creator>Social Quiz</dc:creator>
+      <description>Pick your hot take on Villa's Europa League semi-final win over Forest. Five A/B opinion polls — see where the crowd lands.</description>
+    </item>
+
+  </channel>
+</rss>

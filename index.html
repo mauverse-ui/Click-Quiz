@@ -4,448 +4,672 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Social Quiz — Find Out What Others Think</title>
-  <meta name="description" content="Pick a side. See what everyone else thinks. Quick A/B polls on sport and big moments." />
+  <meta name="description" content="Pick a side. See what everyone else thinks. Match the crowd to score points." />
 
+  <!-- Feed + sitemap discovery (so ad networks and search engines can validate the site) -->
+  <link rel="alternate" type="application/rss+xml" title="Social Quiz — Trending Quizzes" href="/feed.xml" />
+  <link rel="sitemap"   type="application/xml"     title="Sitemap"                          href="/sitemap.xml" />
+  <link rel="canonical" href="https://click-quiz.com/" />
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
+  <!-- Confetti library for win celebrations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js" defer></script>
+
   <!--
     ============================================================
-    Social Quiz — Foundational starter file
+    Social Quiz — single-file, Supabase-driven, hash-routed
     ============================================================
-    Concept: A/B opinion polls themed around sport, world events
-    and hot takes. Every answer reveals how others voted.
-
-    What this file demonstrates:
-      1. Working A/B quiz engine (landing → questions → results)
-      2. Quiz selector (dropdown) so you can swap between quiz packs
-      3. After-answer reveal: fictive vote percentages as bar chart
-      4. Three ad placement zones (top banner, mid-content, sticky footer)
-      5. A tracking layer that logs every event you'll later send to your DB
-      6. Mobile-responsive sporty layout
-      7. UTM parameter capture for traffic source attribution
-
-    How to extend it (next steps):
-      - Replace QUIZZES with a fetch() call to your Supabase database
-      - Replace fictive vote totals with real aggregated counts
-      - Replace track() with a fetch() POST to your tracking endpoint
-      - Replace .ad-slot placeholders with real ad network code
+    Architecture
+    ------------
+    • Topics + questions live in Supabase (`quiz_topics`, `quiz_questions`)
+    • This page fetches the topic catalog at load
+    • Pick a topic → fetch its questions → play the A/B quiz
+    • Crowd-match scoring: pick the majority option, score +1
+    • Each quiz has a deep-linkable URL: /#/q/<slug>
+    • Vote casts go through the `increment_vote` RPC (atomic +1)
+    • Adding a new "trending" quiz = inserting rows in Supabase, no code change
     ============================================================
   -->
 
   <style>
-    /* ---------- Reset + base ---------- */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0a0e1a;
-      color: #fff;
-      line-height: 1.5;
-      min-height: 100%;
-      overflow-x: hidden;
-    }
-    body { padding-bottom: 90px; /* sticky footer ad */ }
+  /* ============================================================
+     1. Reset + base
+     ============================================================ */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0a0e1a;
+    color: #fff;
+    line-height: 1.5;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+  body { padding-bottom: 90px; }
 
-    /* sport-arena background vibe */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background:
-        radial-gradient(circle at 18% 8%, rgba(255, 51, 51, 0.18), transparent 50%),
-        radial-gradient(circle at 82% 92%, rgba(0, 200, 255, 0.10), transparent 50%),
-        linear-gradient(180deg, #0a0e1a 0%, #131826 100%);
-      z-index: -2;
-    }
-    body::after {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 30px);
-      z-index: -1;
-      pointer-events: none;
-    }
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(circle at 18% 8%, rgba(255, 51, 51, 0.18), transparent 50%),
+      radial-gradient(circle at 82% 92%, rgba(0, 200, 255, 0.10), transparent 50%),
+      linear-gradient(180deg, #0a0e1a 0%, #131826 100%);
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 30px);
+  }
 
-    .container { max-width: 820px; margin: 0 auto; padding: 16px; }
+  .container { max-width: 820px; margin: 0 auto; padding: 16px; }
+  .hidden    { display: none !important; }
 
-    /* ---------- Top ad ---------- */
-    .ad-slot {
-      background: repeating-linear-gradient(
-        45deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 10px,
-        rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px
-      );
-      border: 1px dashed rgba(255,255,255,0.15);
-      color: #6f7a8d;
-      font-size: 12px;
-      text-align: center;
-      padding: 14px;
-      border-radius: 10px;
-      margin: 16px 0;
-    }
-    .ad-slot.top    { min-height: 90px; }
-    .ad-slot.mid    { min-height: 250px; }
-    .ad-slot.footer {
-      position: fixed; left: 0; right: 0; bottom: 0;
-      margin: 0; border-radius: 0; min-height: 60px;
-      background: #0a0e1a; border-top: 1px solid rgba(255,255,255,0.08);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
+  /* ============================================================
+     2. Ad slots
+     ============================================================ */
+  .ad-slot {
+    background: repeating-linear-gradient(
+      45deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 10px,
+      rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px
+    );
+    border: 1px dashed rgba(255,255,255,0.15);
+    color: #6f7a8d;
+    font-size: 12px;
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    margin: 16px 0;
+  }
+  .ad-slot.top    { min-height: 90px; }
+  .ad-slot.mid    { min-height: 250px; }
+  .ad-slot.footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    margin: 0; border-radius: 0; min-height: 60px;
+    background: #0a0e1a; border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
 
-    /* ---------- Header ---------- */
-    header {
-      text-align: center;
-      padding: 28px 0 14px;
-    }
-    .logo-row {
-      display: inline-flex; align-items: center; gap: 12px;
-      margin-bottom: 4px;
-    }
-    .logo-mark {
-      width: 44px; height: 44px;
-      background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
-      clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-      display: inline-flex; align-items: center; justify-content: center;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 26px; color: #fff;
-      transform: skewX(-8deg);
-      box-shadow: 0 4px 14px rgba(255, 51, 68, 0.35);
-    }
-    h1.brand-title {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(48px, 8vw, 72px);
-      letter-spacing: 2px;
-      background: linear-gradient(180deg, #fff 0%, #b8c5d6 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      line-height: 1;
-    }
-    .brand-tagline {
-      font-size: clamp(14px, 2.2vw, 18px);
-      color: #8a96aa;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      margin-top: 6px;
-    }
-    .brand-tagline .accent { color: #ff5544; }
+  /* ============================================================
+     3. Header
+     ============================================================ */
+  header { text-align: center; padding: 28px 0 14px; }
+  .logo-row { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
+    clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; color: #fff;
+    transform: skewX(-8deg);
+    box-shadow: 0 4px 14px rgba(255, 51, 68, 0.35);
+  }
+  h1.brand-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 8vw, 72px);
+    letter-spacing: 2px;
+    background: linear-gradient(180deg, #fff 0%, #b8c5d6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1;
+  }
+  .brand-tagline {
+    font-size: clamp(14px, 2.2vw, 18px);
+    color: #8a96aa;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+  }
+  .brand-tagline .accent { color: #ff5544; }
 
-    /* ---------- Take-another-quiz CTA ---------- */
-    .another-quiz-row {
-      display: flex;
-      justify-content: center;
-      margin: 28px 0 8px;
-    }
-    .btn-another-quiz {
-      background: transparent;
-      color: #fff;
-      border: 2px solid rgba(255,255,255,0.18);
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      letter-spacing: 2px;
-      padding: 14px 32px;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .btn-another-quiz .here {
-      background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-    .btn-another-quiz:hover {
-      transform: translateY(-2px);
-      border-color: #ff5544;
-      box-shadow: 0 12px 28px rgba(255, 51, 68, 0.25);
-    }
+  /* ============================================================
+     4. Topic picker
+     ============================================================ */
+  .picker-section h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    font-size: 18px;
+    color: #8a96aa;
+    margin: 22px 0 10px;
+  }
 
-    /* ---------- Quiz card ---------- */
-    .quiz-card {
-      background: rgba(20, 26, 42, 0.7);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      border-radius: 20px;
-      padding: 28px 22px;
-      margin-top: 18px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-    }
-    .quiz-meta {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 14px; flex-wrap: wrap;
-    }
-    .badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: rgba(255, 51, 68, 0.12);
-      color: #ff5544;
-      font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
-      padding: 6px 12px; border-radius: 999px;
-      text-transform: uppercase;
-      border: 1px solid rgba(255, 51, 68, 0.25);
-    }
-    .badge.live::before {
-      content: '';
-      width: 7px; height: 7px;
-      background: #ff3344;
-      border-radius: 50%;
-      animation: pulse 1.4s infinite;
-    }
-    .badge.neutral { background: rgba(255,255,255,0.06); color: #b8c5d6; border-color: rgba(255,255,255,0.12); }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
-    }
+  .featured-card {
+    position: relative;
+    background: linear-gradient(135deg, rgba(80, 220, 120, 0.12) 0%, rgba(0, 200, 255, 0.10) 100%);
+    border: 1px solid rgba(80, 220, 120, 0.35);
+    border-radius: 20px;
+    padding: 26px 22px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .featured-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(80, 220, 120, 0.25); }
+  .featured-card .glow {
+    position: absolute; inset: -20% -10% auto auto; width: 60%; height: 200%;
+    background: radial-gradient(circle, rgba(80, 220, 120, 0.18) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .featured-card .row {
+    display: flex; gap: 16px; align-items: center; position: relative; z-index: 1;
+  }
+  .featured-card .emoji {
+    font-size: 56px;
+    filter: drop-shadow(0 6px 18px rgba(80, 220, 120, 0.4));
+    flex-shrink: 0;
+  }
+  .featured-card .copy { flex: 1; min-width: 0; }
+  .featured-card .badge-row { display: inline-flex; gap: 6px; margin-bottom: 6px; }
+  .featured-card h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 5vw, 40px);
+    letter-spacing: 1.5px;
+    color: #fff;
+    line-height: 1.05;
+  }
+  .featured-card p { color: #b0bccd; font-size: 14px; margin-top: 4px; }
+  .featured-card .play-btn {
+    margin-top: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    color: #062;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+  }
 
-    .progress-label {
-      font-size: 12px; color: #6f7a8d; font-weight: 600;
-      margin-left: auto;
-    }
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .topic-card {
+    background: rgba(20, 26, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .topic-card:hover { transform: translateY(-2px); border-color: #ff5544; }
+  .topic-card .top { display: flex; align-items: center; gap: 10px; }
+  .topic-card .emoji { font-size: 28px; }
+  .topic-card .badge-mini {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #b8c5d6;
+    background: rgba(255,255,255,0.06);
+    padding: 3px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.1);
+    font-weight: 700;
+  }
+  .topic-card h4 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .topic-card p { color: #8a96aa; font-size: 13px; }
 
-    .progress-wrap {
-      background: rgba(255,255,255,0.06);
-      border-radius: 999px; height: 6px; overflow: hidden;
-      margin: 6px 0 18px;
-    }
-    .progress-fill {
-      background: linear-gradient(90deg, #ff3344 0%, #ff7700 100%);
-      height: 100%; width: 0%;
-      transition: width 280ms ease;
-    }
+  /* ============================================================
+     5. Score HUD (during a quiz)
+     ============================================================ */
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(20, 26, 42, 0.7);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    margin: 8px 0 16px;
+    backdrop-filter: blur(10px);
+  }
+  .hud-item { display: flex; flex-direction: column; align-items: flex-start; }
+  .hud-label {
+    font-size: 10px; letter-spacing: 1.5px; color: #8a96aa;
+    text-transform: uppercase; font-weight: 700;
+  }
+  .hud-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; letter-spacing: 1px; color: #fff;
+  }
+  .hud-value.score {
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hud-streak {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 14px; color: #ffaa44; font-weight: 800;
+  }
+  .hud-back {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #b8c5d6;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+  .hud-back:hover { border-color: #ff5544; color: #fff; }
 
-    .question-pre {
-      font-family: 'Bebas Neue', sans-serif;
-      letter-spacing: 2px;
-      color: #ff5544;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-    .question {
-      font-size: clamp(20px, 3.2vw, 26px);
-      font-weight: 800;
-      line-height: 1.3;
-      margin: 6px 0 22px;
-      color: #f5f8ff;
-    }
+  /* ============================================================
+     6. Quiz card
+     ============================================================ */
+  .quiz-card {
+    background: rgba(20, 26, 42, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 28px 22px;
+    margin-top: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  .quiz-meta {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255, 51, 68, 0.12);
+    color: #ff5544;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 6px 12px; border-radius: 999px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 51, 68, 0.25);
+  }
+  .badge.live::before {
+    content: '';
+    width: 7px; height: 7px;
+    background: #ff3344;
+    border-radius: 50%;
+    animation: pulse 1.4s infinite;
+  }
+  .badge.green {
+    background: rgba(80, 220, 120, 0.12); color: #50dc78;
+    border-color: rgba(80, 220, 120, 0.25);
+  }
+  .badge.green.live::before { background: #50dc78; }
+  .badge.neutral { background: rgba(255,255,255,0.06); color: #b8c5d6; border-color: rgba(255,255,255,0.12); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.85); }
+  }
 
-    /* ---------- Match-up A/B ---------- */
-    /* Flexbox so the two banners can physically resize to match the vote split */
-    .matchup {
-      display: flex;
-      gap: 10px;
-      align-items: stretch;
-      min-height: 220px;
-    }
-    @media (max-width: 600px) {
-      .matchup { gap: 6px; min-height: 200px; }
-      .vs-divider { padding: 0 2px; font-size: 18px; }
-    }
+  .progress-wrap {
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px; height: 6px; overflow: hidden;
+    margin: 6px 0 18px;
+  }
+  .progress-fill {
+    background: linear-gradient(90deg, #ff3344 0%, #ff7700 100%);
+    height: 100%; width: 0%;
+    transition: width 280ms ease;
+  }
+  .progress-fill.green { background: linear-gradient(90deg, #50dc78 0%, #00c8ff 100%); }
 
-    .option-banner {
-      flex: 1 1 0;          /* equal width before voting */
-      min-width: 0;         /* allow shrinking below content width */
-      position: relative;
-      cursor: pointer;
-      border-radius: 16px;
-      overflow: hidden;
-      display: flex; flex-direction: column;
-      justify-content: space-between;
-      padding: 18px 16px;
-      border: 2px solid transparent;
-      transition: flex-grow 1s cubic-bezier(0.2, 0.9, 0.3, 1),
-                  transform 0.2s ease, border-color 0.2s ease,
-                  box-shadow 0.2s ease, opacity 0.2s ease;
-      isolation: isolate;
-      text-align: left;
-    }
-    @media (max-width: 600px) {
-      .option-banner { padding: 14px 10px; }
-    }
+  .question-pre {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 2px;
+    color: #ff5544;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .question-pre.green { color: #50dc78; }
+  .question {
+    font-size: clamp(18px, 3vw, 24px);
+    font-weight: 800;
+    line-height: 1.35;
+    margin: 6px 0 22px;
+    color: #f5f8ff;
+  }
 
-    /* Top row: letter (and YOU tag if chosen) */
-    .option-top {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 8px;
-    }
-    .option-percent {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(56px, 14vw, 110px);
-      letter-spacing: 1px;
-      color: #fff;
-      line-height: 0.95;
-      text-align: center;
-      margin: auto 0;
-      opacity: 0;
-      transform: scale(0.7);
-      transition: opacity 0.45s ease, transform 0.45s ease;
-      text-shadow: 0 4px 18px rgba(0,0,0,0.5);
-      overflow: hidden;
-    }
-    .option-banner.voted .option-percent {
-      opacity: 1;
-      transform: scale(1);
-    }
+  /* ============================================================
+     7. A/B match-up
+     ============================================================ */
+  .matchup { display: flex; gap: 10px; align-items: stretch; min-height: 220px; }
+  @media (max-width: 600px) {
+    .matchup { gap: 6px; min-height: 200px; }
+    .vs-divider { padding: 0 2px; font-size: 18px; }
+  }
 
-    .option-banner .you-tag {
-      display: none;
-    }
-    .option-banner.you .you-tag { display: inline-block; }
-    .option-banner:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    }
-    .option-banner.team-a { background: linear-gradient(135deg, #c8102e 0%, #7a0a1d 100%); }
-    .option-banner.team-b { background: linear-gradient(135deg, #003478 0%, #001a3d 100%); }
-    .option-banner::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: repeating-linear-gradient(135deg,
-        rgba(255,255,255,0.04) 0 8px, transparent 8px 24px);
-      z-index: -1;
-    }
-    .option-banner.team-a:hover { border-color: #ff5566; }
-    .option-banner.team-b:hover { border-color: #4a90ff; }
-    .option-banner.locked { cursor: default; transform: none; }
+  .option-banner {
+    flex: 1 1 0;
+    min-width: 0;
+    position: relative;
+    cursor: pointer;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 18px 16px;
+    border: 2px solid transparent;
+    transition: flex-grow 1s cubic-bezier(0.2, 0.9, 0.3, 1),
+                transform 0.2s ease, border-color 0.2s ease,
+                box-shadow 0.2s ease, opacity 0.2s ease;
+    isolation: isolate;
+    text-align: left;
+    background: transparent;
+    color: #fff;
+    font-family: inherit;
+  }
+  @media (max-width: 600px) { .option-banner { padding: 14px 10px; } }
 
-    .option-letter {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 22px;
-      letter-spacing: 1px;
-      width: 32px; height: 32px;
-      border-radius: 8px;
-      display: inline-flex; align-items: center; justify-content: center;
-      background: rgba(255,255,255,0.18);
-      color: #fff;
-      flex-shrink: 0;
-    }
-    .option-text {
-      font-size: clamp(16px, 2.6vw, 20px);
-      font-weight: 800;
-      letter-spacing: 0.3px;
-      color: #fff;
-      line-height: 1.25;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    }
+  .option-banner.team-a { background: linear-gradient(135deg, #c8102e 0%, #7a0a1d 100%); }
+  .option-banner.team-b { background: linear-gradient(135deg, #003478 0%, #001a3d 100%); }
+  .option-banner.team-a:hover { border-color: #ff5566; }
+  .option-banner.team-b:hover { border-color: #4a90ff; }
+  .option-banner::before {
+    content: '';
+    position: absolute; inset: 0; z-index: -1;
+    background: repeating-linear-gradient(135deg,
+      rgba(255,255,255,0.04) 0 8px, transparent 8px 24px);
+  }
+  .option-banner:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
+  .option-banner.locked  { cursor: default; transform: none; }
+  .option-banner.correct { box-shadow: 0 0 0 3px #50dc78, 0 12px 30px rgba(80, 220, 120, 0.3); }
+  .option-banner.wrong   { opacity: 0.55; }
 
-    .vs-divider {
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 24px;
-      color: #ff5544;
-      letter-spacing: 2px;
-      padding: 0 4px;
-    }
+  .option-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .option-letter {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .option-text {
+    font-size: clamp(15px, 2.4vw, 18px);
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    color: #fff;
+    line-height: 1.25;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .option-percent {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 14vw, 110px);
+    letter-spacing: 1px;
+    color: #fff;
+    line-height: 0.95;
+    text-align: center;
+    margin: auto 0;
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .option-banner.voted .option-percent { opacity: 1; transform: scale(1); }
 
-    /* ---------- Results bar chart ---------- */
-    .results {
-      display: none;
-      margin-top: 22px;
-      animation: fadeUp 0.4s ease;
-    }
-    .results.visible { display: block; }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+  .option-banner .you-tag,
+  .option-banner .crown-tag { display: none; }
+  .option-banner.you      .you-tag   { display: inline-block; }
+  .option-banner.majority .crown-tag { display: inline-block; }
 
-    .you-tag {
-      background: #ff5544; color: #fff;
-      font-size: 10px; padding: 2px 7px;
-      border-radius: 4px; letter-spacing: 0.8px;
-      font-weight: 800;
-    }
+  .you-tag {
+    background: #50dc78; color: #062;
+    font-size: 10px; padding: 2px 7px;
+    border-radius: 4px; letter-spacing: 0.8px;
+    font-weight: 800;
+  }
+  .crown-tag { font-size: 18px; }
 
-    .vote-summary {
-      text-align: center;
-      color: #8a96aa;
-      font-size: 13px;
-      margin-top: 10px;
-    }
-    .vote-summary strong { color: #fff; }
+  .vs-divider {
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    color: #ff5544;
+    letter-spacing: 2px;
+    padding: 0 4px;
+  }
 
-    .next-row {
-      display: flex; justify-content: center;
-      margin-top: 22px;
-    }
-    .btn-next {
-      background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
-      color: #fff; border: none;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 20px; letter-spacing: 2px;
-      padding: 14px 32px; border-radius: 12px;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 8px 20px rgba(255, 51, 68, 0.3);
-    }
-    .btn-next:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(255, 51, 68, 0.45);
-    }
+  /* ============================================================
+     8. Result strip + verdict
+     ============================================================ */
+  .results { display: none; margin-top: 18px; animation: fadeUp 0.4s ease; }
+  .results.visible { display: block; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
-    /* ---------- Recap screen ---------- */
-    .recap-hero { text-align: center; padding: 6px 0 8px; }
-    .recap-hero .emoji { font-size: 48px; }
-    .recap-hero h2 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(28px, 5vw, 40px);
-      letter-spacing: 2px;
-      margin-top: 10px;
-    }
-    .recap-hero p { color: #8a96aa; margin-top: 4px; font-size: 15px; }
+  .verdict {
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .verdict.win {
+    background: rgba(80, 220, 120, 0.15);
+    color: #80ffa0;
+    border: 1px solid rgba(80, 220, 120, 0.4);
+  }
+  .verdict.lose {
+    background: rgba(255, 80, 80, 0.10);
+    color: #ff9090;
+    border: 1px solid rgba(255, 80, 80, 0.3);
+  }
+  .verdict .points {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
 
-    .recap-list { margin-top: 18px; }
-    .recap-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 12px;
-      background: rgba(255,255,255,0.04);
-      border-radius: 10px;
-      margin-bottom: 6px;
-      font-size: 13px;
-    }
-    .recap-row .q { color: #d6dee8; flex: 1; padding-right: 12px; }
-    .recap-row .a {
-      font-weight: 800; font-size: 12px;
-      padding: 4px 10px; border-radius: 6px;
-      letter-spacing: 0.5px;
-    }
-    .recap-row .a.a { background: rgba(255, 51, 68, 0.18); color: #ff8090; }
-    .recap-row .a.b { background: rgba(74, 144, 255, 0.18); color: #7dafff; }
+  .vote-summary {
+    text-align: center;
+    color: #8a96aa;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .vote-summary strong { color: #fff; }
 
-    .recap-actions {
-      display: flex; gap: 10px; justify-content: center;
-      flex-wrap: wrap; margin-top: 18px;
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.12);
-      font-family: inherit;
-      font-size: 14px; font-weight: 700;
-      padding: 12px 20px; border-radius: 10px;
-      cursor: pointer;
-    }
-    .btn-secondary:hover { border-color: #ff5544; }
+  .next-row { display: none; justify-content: center; margin-top: 16px; }
+  .next-row.visible { display: flex; animation: fadeUp 0.4s ease; }
+  .btn-next {
+    background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
+    color: #fff; border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 2px;
+    padding: 14px 32px; border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 8px 20px rgba(255, 51, 68, 0.3);
+  }
+  .btn-next.green {
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    color: #062;
+    box-shadow: 0 8px 20px rgba(80, 220, 120, 0.3);
+  }
+  .btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(255, 51, 68, 0.45);
+  }
+  .btn-next.green:hover { box-shadow: 0 12px 28px rgba(80, 220, 120, 0.45); }
 
-    /* ---------- Footer ---------- */
-    footer {
-      text-align: center;
-      color: #4a5568;
-      font-size: 12px;
-      padding: 24px 16px 80px;
-    }
-    footer a { color: #6c7596; }
+  /* ============================================================
+     9. Recap
+     ============================================================ */
+  .recap-hero { text-align: center; padding: 6px 0 8px; }
+  .recap-hero .emoji { font-size: 56px; }
+  .recap-hero h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(28px, 5vw, 40px);
+    letter-spacing: 2px;
+    margin-top: 10px;
+  }
+  .recap-hero .final-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(56px, 14vw, 96px);
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1;
+    margin-top: 8px;
+  }
+  .recap-hero p { color: #8a96aa; margin-top: 4px; font-size: 15px; }
 
-    .hidden { display: none !important; }
+  .recap-list { margin-top: 18px; }
+  .recap-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    gap: 8px;
+  }
+  .recap-row .q { color: #d6dee8; flex: 1; padding-right: 12px; }
+  .recap-row .res {
+    font-weight: 800; font-size: 12px;
+    padding: 4px 10px; border-radius: 6px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .recap-row .res.win  { background: rgba(80, 220, 120, 0.18); color: #80ffa0; }
+  .recap-row .res.lose { background: rgba(255, 80, 80, 0.15); color: #ff9090; }
+
+  .recap-actions {
+    display: flex; gap: 10px; justify-content: center;
+    flex-wrap: wrap; margin-top: 18px;
+  }
+  .btn-secondary {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    font-family: inherit;
+    font-size: 14px; font-weight: 700;
+    padding: 12px 20px; border-radius: 10px;
+    cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: #ff5544; }
+
+  /* ============================================================
+     10. Loading + error states
+     ============================================================ */
+  .state-msg { text-align: center; padding: 60px 16px; color: #8a96aa; }
+  .state-msg .spinner {
+    display: inline-block;
+    width: 32px; height: 32px;
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top-color: #ff5544;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ============================================================
+     11. Footer
+     ============================================================ */
+  footer {
+    text-align: center;
+    color: #4a5568;
+    font-size: 12px;
+    padding: 24px 16px 80px;
+  }
+  footer a { color: #6c7596; }
+
+  /* ============================================================
+     12. Feedback FX — full-screen flashes + shake/pulse
+     ============================================================ */
+  .flash-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+  }
+  .flash-overlay.green {
+    background:
+      radial-gradient(ellipse at center, rgba(40, 255, 120, 0) 0%, rgba(40, 220, 110, 0.55) 100%),
+      rgba(60, 230, 130, 0.22);
+    box-shadow: inset 0 0 80px 20px rgba(40, 220, 110, 0.7);
+  }
+  .flash-overlay.red {
+    background:
+      radial-gradient(ellipse at center, rgba(255, 0, 40, 0) 0%, rgba(255, 0, 40, 0.55) 100%),
+      rgba(255, 30, 30, 0.25);
+    box-shadow: inset 0 0 80px 20px rgba(255, 0, 30, 0.7);
+  }
+  .flash-overlay.green.fire { animation: greenFlash 0.85s ease-out; }
+  .flash-overlay.red.fire   { animation: redFlash   0.65s ease-out; }
+  @keyframes greenFlash {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    45%  { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+  @keyframes redFlash {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    40%  { opacity: 0.6; }
+    100% { opacity: 0; }
+  }
+
+  .pulse-win { animation: pulseWin 0.55s ease-out; }
+  @keyframes pulseWin {
+    0%, 100% { transform: scale(1); }
+    40%      { transform: scale(1.012); }
+  }
+
+  .shake { animation: shake 0.4s ease-in-out; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(6px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(4px); }
+  }
   </style>
 </head>
 <body>
 
-  <!-- ========== TOP AD SLOT ========== -->
+  <!-- Win / loss feedback overlays -->
+  <div class="flash-overlay green" id="greenFlash"></div>
+  <div class="flash-overlay red"   id="redFlash"></div>
+
+  <!-- Top ad slot -->
   <div class="container">
-    <div class="ad-slot top" id="ad-slot-top">
-      [ Ad Slot — Top Banner 728×90 / 320×50 mobile ]
-    </div>
+    <div class="ad-slot top">[ Ad Slot — Top Banner 728×90 / 320×50 mobile ]</div>
   </div>
 
+  <!-- Site header -->
   <header>
     <div class="logo-row">
       <div class="logo-mark">SQ</div>
@@ -456,187 +680,153 @@
 
   <main class="container">
 
-    <!-- ========== Quiz card ========== -->
-    <section id="screen-quiz" class="quiz-card">
-      <div class="quiz-meta">
-        <span class="badge live">Live</span>
-        <span class="badge neutral" id="quiz-context">Aston Villa 2 – 0 Forest · Europa League SF</span>
+    <!-- ============================================
+         Screen 1 — Topic picker (home / route: /)
+         ============================================ -->
+    <section id="screen-picker">
+      <div id="picker-loading" class="state-msg">
+        <div class="spinner"></div>
+        <div>Loading quizzes…</div>
       </div>
 
-      <div class="question-pre" id="question-pre">Question 1</div>
-      <h2 class="question" id="question-text">Loading…</h2>
-
-      <div class="matchup" id="matchup">
-        <button class="option-banner team-a" id="optA" onclick="selectOption('a')">
-          <div class="option-top">
-            <span class="option-letter">A</span>
-            <span class="you-tag" id="youTagA">YOU</span>
-          </div>
-          <div class="option-percent" id="pctA">0%</div>
-          <div class="option-text-wrap">
-            <span class="option-text" id="optA-text"></span>
-          </div>
-        </button>
-
-        <div class="vs-divider">VS</div>
-
-        <button class="option-banner team-b" id="optB" onclick="selectOption('b')">
-          <div class="option-top">
-            <span class="option-letter">B</span>
-            <span class="you-tag" id="youTagB">YOU</span>
-          </div>
-          <div class="option-percent" id="pctB">0%</div>
-          <div class="option-text-wrap">
-            <span class="option-text" id="optB-text"></span>
-          </div>
-        </button>
+      <div id="picker-error" class="state-msg hidden">
+        <div>⚠️ Couldn't load quizzes. Check your connection and try again.</div>
+        <button class="btn-secondary" style="margin-top:12px;" onclick="loadTopics()">Retry</button>
       </div>
 
-      <section class="results" id="results">
-        <div class="vote-summary"><strong id="voteTotal">0</strong> people have voted on this question</div>
-
-        <div class="next-row">
-          <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
+      <div id="picker-content" class="hidden">
+        <div id="featured-slot"></div>
+        <div class="picker-section">
+          <h2>MORE QUIZZES</h2>
+          <div class="topic-grid" id="topic-grid"></div>
         </div>
-      </section>
-
-      <!-- Mid-quiz ad -->
-      <div class="ad-slot mid hidden" id="ad-slot-mid">
-        [ Ad Slot — In-Quiz Native 300×250 ]
       </div>
     </section>
 
-    <!-- ========== Take-another-quiz CTA ========== -->
-    <div class="another-quiz-row">
-      <button class="btn-another-quiz" onclick="goToNextQuiz()">
-        Take another quiz <span class="here">HERE</span>
-      </button>
-    </div>
+    <!-- ============================================
+         Screen 2 — Quiz (route: /#/q/<slug>)
+         ============================================ -->
+    <section id="screen-quiz" class="hidden">
 
-    <!-- ========== Recap screen ========== -->
+      <div class="hud">
+        <button class="hud-back" onclick="goHome()">← All quizzes</button>
+        <div class="hud-item">
+          <span class="hud-label">Score</span>
+          <span class="hud-value score" id="hud-score">0 / 0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Streak</span>
+          <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
+        </div>
+      </div>
+
+      <section class="quiz-card">
+        <div class="quiz-meta">
+          <span class="badge live"   id="quiz-badge">Live</span>
+          <span class="badge neutral" id="quiz-context">Loading…</span>
+        </div>
+
+        <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+
+        <div class="question-pre" id="question-pre">Question 1</div>
+        <h2 class="question" id="question-text">Loading…</h2>
+
+        <div class="matchup">
+          <button class="option-banner team-a" id="optA" onclick="selectOption('a')">
+            <div class="option-top">
+              <span class="option-letter">A</span>
+              <span>
+                <span class="crown-tag">👑</span>
+                <span class="you-tag">YOU</span>
+              </span>
+            </div>
+            <div class="option-percent" id="pctA">0%</div>
+            <div class="option-text" id="optA-text"></div>
+          </button>
+
+          <div class="vs-divider">VS</div>
+
+          <button class="option-banner team-b" id="optB" onclick="selectOption('b')">
+            <div class="option-top">
+              <span class="option-letter">B</span>
+              <span>
+                <span class="crown-tag">👑</span>
+                <span class="you-tag">YOU</span>
+              </span>
+            </div>
+            <div class="option-percent" id="pctB">0%</div>
+            <div class="option-text" id="optB-text"></div>
+          </button>
+        </div>
+
+        <section class="results" id="results">
+          <div class="verdict" id="verdict"></div>
+          <div class="vote-summary"><strong id="voteTotal">0</strong> people have voted on this question</div>
+        </section>
+
+        <div class="ad-slot mid">[ Ad Slot — In-Quiz Native 300×250 ]</div>
+
+        <div class="next-row" id="nextRow">
+          <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================================
+         Screen 3 — Recap
+         ============================================ -->
     <section id="screen-recap" class="quiz-card hidden">
       <div class="recap-hero">
-        <div class="emoji">🏆</div>
-        <h2 id="recap-title">YOU'VE HAD YOUR SAY</h2>
-        <p id="recap-blurb">Here's what you picked — and where the crowd landed.</p>
+        <div class="emoji" id="recap-emoji">🏆</div>
+        <h2 id="recap-title">QUIZ COMPLETE</h2>
+        <div class="final-score" id="final-score">0 / 0</div>
+        <p id="recap-blurb">Here's how you matched up with the crowd.</p>
       </div>
 
-      <div class="recap-list" id="recap-list"><!-- injected --></div>
+      <div class="recap-list" id="recap-list"></div>
 
-      <!-- Result page is the highest-engagement page = best ad placement -->
-      <div class="ad-slot mid" id="ad-slot-result">
-        [ Ad Slot — Result Page 300×250 / 336×280 ]
-      </div>
+      <div class="ad-slot mid">[ Ad Slot — Result Page 300×250 / 336×280 ]</div>
 
       <div class="recap-actions">
-        <button class="btn-next" onclick="goToNextQuiz()">Try Next Quiz →</button>
+        <button class="btn-next green" onclick="goHome()">Try Another Quiz →</button>
         <button class="btn-secondary" onclick="restart()">Restart this quiz</button>
       </div>
     </section>
 
   </main>
 
+  <!-- Footer -->
   <footer>
     <p>© 2026 Social Quiz · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Contact</a></p>
     <p style="margin-top:6px;">Session ID: <span id="session-id-display">—</span></p>
   </footer>
 
-  <!-- ========== STICKY FOOTER AD SLOT ========== -->
-  <div class="ad-slot footer" id="ad-slot-footer">
-    [ Ad Slot — Sticky Footer 320×50 / 728×90 ]
-  </div>
+  <!-- Sticky footer ad -->
+  <div class="ad-slot footer">[ Ad Slot — Sticky Footer 320×50 / 728×90 ]</div>
 
   <script>
   /* ============================================================
-     Social Quiz — frontend logic
+     SOCIAL QUIZ — Application JavaScript
      ============================================================ */
 
-  /* ---------- 1. CONFIG ---------- */
-  const CONFIG = {
-    midAdAfterQuestion: 3,
-    questionsApiUrl: null,    // future Supabase endpoint
-    trackingApiUrl: null,     // future tracking endpoint
+  /* ============================================================
+     1. Supabase config
+     ============================================================ */
+  const SUPABASE_URL = 'https://roayyfrgofikkvihimkf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_x-Zx27BXNq0AVrIXWfe2uw_3cD3CjN0';
+  const SUPABASE_HEADERS = {
+    apikey:        SUPABASE_KEY,
+    Authorization: 'Bearer ' + SUPABASE_KEY,
+    'Content-Type':'application/json'
   };
 
-  /* ---------- 2. QUIZ POOL ----------
-     Each quiz has its own context badge + question list.
-     A question is { id, pre, text, a, b, votesA, votesB }
-     where votes are fictive seed totals used for the bar chart.
-  */
-  const QUIZZES = {
-    villa_forest_eu: {
-      id: 'villa_forest_eu',
-      title: 'Villa 2-0 Forest · Europa SF',
-      context: 'Aston Villa 2 – 0 Forest · Europa League SF',
-      questions: [
-        {
-          id: 'vf1',
-          pre: 'The Hero',
-          text: 'John McGinn scored two identical screamers in 3 minutes. Was this his best performance in a Villa shirt?',
-          a: "Yes, pure captain's display!",
-          b: 'No, he\u2019s had better.',
-          votesA: 8421, votesB: 2317
-        },
-        {
-          id: 'vf2',
-          pre: 'The Turning Point',
-          text: 'Prince William was seen celebrating wildly after Buendía\u2019s penalty. Did the 2nd goal officially break Forest?',
-          a: 'Yes, game over then.',
-          b: 'No, Forest still had hope.',
-          votesA: 6798, votesB: 3104
-        },
-        {
-          id: 'vf3',
-          pre: 'Tactical Masterclass',
-          text: 'Unai Emery is hunting his 5th Europa League title. Is he currently the best tactical manager in the world?',
-          a: "Absolutely, he's a genius.",
-          b: 'Top 5, but not #1.',
-          votesA: 5240, votesB: 5612
-        },
-        {
-          id: 'vf4',
-          pre: 'Forest\u2019s Defeat',
-          text: 'Forest were on a 10-game unbeaten run before tonight. Was this a tactical failure or just Villa\u2019s home atmosphere?',
-          a: 'Emery out-coached them.',
-          b: 'The Villa Park noise won it.',
-          votesA: 6112, votesB: 4380
-        },
-        {
-          id: 'vf5',
-          pre: 'The Final',
-          text: 'Villa faces Freiburg in the final in Istanbul. Will the trophy finally come back to Birmingham?',
-          a: "It's coming home!",
-          b: 'Freiburg will be too tough.',
-          votesA: 9135, votesB: 1809
-        }
-      ]
-    },
-    // Placeholder for future quizzes — duplicate the structure above:
-    sample_world: {
-      id: 'sample_world',
-      title: 'World news · Hot takes',
-      context: 'World News · Coming soon',
-      questions: [
-        {
-          id: 'sw1',
-          pre: 'Hot Take',
-          text: 'Add your next set of opinion-poll questions here.',
-          a: 'Yes, totally.',
-          b: 'No way.',
-          votesA: 1200, votesB: 980
-        }
-      ]
-    }
-  };
-
-  /* ---------- 3. SESSION + TRACKING ---------- */
+  /* ============================================================
+     2. Session, UTM capture, tracking
+     ============================================================ */
   const session = {
-    id: 'sess_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now(),
+    id:       'sess_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now(),
     landedAt: Date.now(),
-    quizId: null,
-    questionPath: [],
-    answers: [],            // { questionId, choice: 'a'|'b' }
-    utm: getUtmParams(),
+    utm:      getUtmParams()
   };
   document.getElementById('session-id-display').textContent = session.id;
 
@@ -647,193 +837,556 @@
       campaign: p.get('utm_campaign') || null,
       medium:   p.get('utm_medium')   || null,
       content:  p.get('utm_content')  || null,
-      term:     p.get('utm_term')     || null,
+      term:     p.get('utm_term')     || null
     };
   }
 
   function track(eventName, payload = {}) {
-    const event = {
-      event: eventName,
-      session_id: session.id,
-      quiz_id: session.quizId,
-      ts: Date.now(),
-      ...payload,
-    };
-    console.log('[track]', event);
-    // When you have a tracking endpoint, uncomment:
-    // if (CONFIG.trackingApiUrl) {
-    //   fetch(CONFIG.trackingApiUrl, {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(event),
-    //     keepalive: true,
-    //   }).catch(() => {});
-    // }
+    console.log('[track]', { event: eventName, session_id: session.id, ts: Date.now(), ...payload });
+    // When a tracking endpoint is wired up, POST `event` to it here.
   }
 
   track('session_start', { utm: session.utm, referrer: document.referrer });
 
-  /* ---------- 4. QUIZ ENGINE ---------- */
-  let currentQuiz = null;
-  let currentIndex = 0;
-  let questionShownAt = 0;
+  /* ============================================================
+     3. Application state
+     ============================================================ */
+  const state = {
+    topics:          [],   // [{ slug, title, subtitle, badge, emoji, is_trending }]
+    currentTopic:    null,
+    questions:       [],   // questions for the current topic
+    currentIndex:    0,
+    score:           0,
+    streak:          0,
+    bestStreak:      0,
+    answers:         [],
+    questionShownAt: 0
+  };
 
-  function onQuizChange(quizId) {
-    startQuiz(quizId);
-  }
-
-  function startQuiz(quizId) {
-    currentQuiz = QUIZZES[quizId];
-    if (!currentQuiz) return;
-    session.quizId = quizId;
-    session.answers = [];
-    session.questionPath = [];
-    currentIndex = 0;
-
-    document.getElementById('quiz-context').textContent = currentQuiz.context;
-
-    document.getElementById('screen-recap').classList.add('hidden');
-    document.getElementById('screen-quiz').classList.remove('hidden');
-    document.getElementById('ad-slot-mid').classList.add('hidden');
-
-    track('quiz_started', {
-      quiz_id: quizId,
-      question_count: currentQuiz.questions.length,
+  /* ============================================================
+     4. Screen manager
+     ============================================================ */
+  function showScreen(name) {
+    ['screen-picker', 'screen-quiz', 'screen-recap'].forEach(id => {
+      document.getElementById(id).classList.add('hidden');
     });
-
-    renderQuestion();
+    document.getElementById('screen-' + name).classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  /* ============================================================
+     5. Hash-based router
+     ------------------------------------------------------------
+     Routes:
+       /                   → topic picker
+       /#/q/<slug>         → start that quiz directly
+     Hash routing means each quiz has a deep-linkable URL with
+     no server config — perfect for static hosting and per-quiz
+     ad campaigns.
+     ============================================================ */
+  let suppressHashChange = false;
+
+  function parseHashRoute() {
+    const hash = (window.location.hash || '').replace(/^#\/?/, '');
+    if (!hash) return { route: 'home' };
+    const parts = hash.split('/');
+    if (parts[0] === 'q' && parts[1]) {
+      return { route: 'quiz', slug: decodeURIComponent(parts[1]) };
+    }
+    return { route: 'home' };
+  }
+
+  function setHashForQuiz(slug) {
+    const newHash = '#/q/' + encodeURIComponent(slug);
+    if (window.location.hash !== newHash) {
+      suppressHashChange = true;
+      window.history.pushState(null, '', newHash + window.location.search);
+      setTimeout(() => { suppressHashChange = false; }, 0);
+    }
+  }
+
+  function clearHash() {
+    if (window.location.hash) {
+      suppressHashChange = true;
+      window.history.pushState(null, '', window.location.pathname + window.location.search);
+      setTimeout(() => { suppressHashChange = false; }, 0);
+    }
+  }
+
+  function applyHashRoute() {
+    if (suppressHashChange) return;
+    const route = parseHashRoute();
+    if (route.route === 'quiz' && route.slug) {
+      const exists = state.topics.some(t => t.slug === route.slug);
+      if (exists) {
+        startQuiz(route.slug, { fromHash: true });
+        return;
+      }
+    }
+    showScreen('picker');
+  }
+
+  window.addEventListener('hashchange', applyHashRoute);
+  window.addEventListener('popstate',   applyHashRoute);
+
+  /* ============================================================
+     6. Topic loading
+     ============================================================ */
+  async function loadTopics() {
+    document.getElementById('picker-loading').classList.remove('hidden');
+    document.getElementById('picker-error').classList.add('hidden');
+    document.getElementById('picker-content').classList.add('hidden');
+
+    try {
+      const url = SUPABASE_URL +
+        '/rest/v1/quiz_topics' +
+        '?select=slug,title,subtitle,badge,emoji,is_trending' +
+        '&is_active=eq.true' +
+        '&order=is_trending.desc,sort_order.asc';
+      const r = await fetch(url, { headers: SUPABASE_HEADERS });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      state.topics = await r.json();
+
+      renderPicker();
+      document.getElementById('picker-loading').classList.add('hidden');
+      document.getElementById('picker-content').classList.remove('hidden');
+      track('picker_loaded', { topic_count: state.topics.length });
+
+      // Honor any deep link in the URL (e.g. /#/q/<slug>)
+      applyHashRoute();
+    } catch (err) {
+      console.error('Topic load failed:', err);
+      document.getElementById('picker-loading').classList.add('hidden');
+      document.getElementById('picker-error').classList.remove('hidden');
+    }
+  }
+
+  /* ============================================================
+     7. Picker rendering
+     ============================================================ */
+  function renderPicker() {
+    const featured = state.topics.find(t => t.is_trending) || state.topics[0];
+    const others   = state.topics.filter(t => t !== featured);
+
+    const featuredSlot = document.getElementById('featured-slot');
+    featuredSlot.innerHTML = '';
+    if (featured) {
+      const card = document.createElement('div');
+      card.className = 'featured-card';
+      card.onclick = () => startQuiz(featured.slug);
+      card.innerHTML =
+        '<div class="glow"></div>' +
+        '<div class="row">' +
+          '<div class="emoji">' + (featured.emoji || '🔥') + '</div>' +
+          '<div class="copy">' +
+            '<div class="badge-row">' +
+              '<span class="badge green live">' + escapeHtml(featured.badge || 'Trending now') + '</span>' +
+            '</div>' +
+            '<h3>' + escapeHtml(featured.title) + '</h3>' +
+            (featured.subtitle ? '<p>' + escapeHtml(featured.subtitle) + '</p>' : '') +
+            '<button class="play-btn">Play now →</button>' +
+          '</div>' +
+        '</div>';
+      featuredSlot.appendChild(card);
+    }
+
+    const grid = document.getElementById('topic-grid');
+    grid.innerHTML = '';
+    if (others.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'state-msg';
+      empty.style.gridColumn = '1 / -1';
+      empty.textContent = 'More quizzes coming soon.';
+      grid.appendChild(empty);
+    } else {
+      others.forEach(t => {
+        const c = document.createElement('div');
+        c.className = 'topic-card';
+        c.onclick = () => startQuiz(t.slug);
+        c.innerHTML =
+          '<div class="top">' +
+            '<div class="emoji">' + (t.emoji || '❓') + '</div>' +
+            '<span class="badge-mini">' + escapeHtml(t.badge || 'Quiz') + '</span>' +
+          '</div>' +
+          '<h4>' + escapeHtml(t.title) + '</h4>' +
+          (t.subtitle ? '<p>' + escapeHtml(t.subtitle) + '</p>' : '');
+        grid.appendChild(c);
+      });
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
+  /* ============================================================
+     8. Quiz lifecycle
+     ============================================================ */
+  async function startQuiz(slug, opts = {}) {
+    const topic = state.topics.find(t => t.slug === slug);
+    if (!topic) return;
+    if (!opts.fromHash) setHashForQuiz(slug);
+
+    // Reset per-quiz state
+    state.currentTopic = topic;
+    state.questions    = [];
+    state.currentIndex = 0;
+    state.score        = 0;
+    state.streak       = 0;
+    state.bestStreak   = 0;
+    state.answers      = [];
+
+    showScreen('quiz');
+    setQuizTheme(topic);
+
+    // Loading state inside the quiz card
+    document.getElementById('question-pre').textContent  = 'Loading…';
+    document.getElementById('question-text').textContent = 'Fetching the latest crowd data…';
+    document.getElementById('optA-text').textContent     = '';
+    document.getElementById('optB-text').textContent     = '';
+
+    try {
+      const url = SUPABASE_URL +
+        '/rest/v1/quiz_questions' +
+        '?select=id,question_text,options,total_votes_a,total_votes_b' +
+        '&topic=eq.' + encodeURIComponent(slug) +
+        '&order=created_at.asc';
+      const r = await fetch(url, { headers: SUPABASE_HEADERS });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const rows = await r.json();
+      state.questions = rows.map(row => ({
+        id:     row.id,
+        text:   row.question_text,
+        a:      row.options && row.options.a,
+        b:      row.options && row.options.b,
+        votesA: row.total_votes_a || 0,
+        votesB: row.total_votes_b || 0
+      }));
+
+      if (state.questions.length === 0) {
+        document.getElementById('question-text').textContent = 'No questions found for this topic yet.';
+        return;
+      }
+
+      track('quiz_started', { topic: slug, question_count: state.questions.length });
+      renderQuestion();
+    } catch (err) {
+      console.error('Question load failed:', err);
+      document.getElementById('question-text').textContent =
+        'Something went wrong loading this quiz. Please try again.';
+    }
+  }
+
+  function setQuizTheme(topic) {
+    document.getElementById('quiz-context').textContent = topic.subtitle || topic.title;
+    const badge = document.getElementById('quiz-badge');
+    badge.textContent = topic.badge || 'Live';
+    badge.classList.toggle('green', !!topic.is_trending);
+
+    document.getElementById('progress-fill').classList.toggle('green', !!topic.is_trending);
+    document.getElementById('question-pre').classList.toggle('green', !!topic.is_trending);
+    document.getElementById('nextBtn').classList.toggle('green', !!topic.is_trending);
+  }
+
+  /* ============================================================
+     9. Question rendering + HUD
+     ============================================================ */
   function renderQuestion() {
-    const q = currentQuiz.questions[currentIndex];
-    questionShownAt = Date.now();
+    const q = state.questions[state.currentIndex];
+    state.questionShownAt = Date.now();
 
-    document.getElementById('question-pre').textContent = q.pre || ('Question ' + (currentIndex + 1));
+    document.getElementById('question-pre').textContent =
+      'Question ' + (state.currentIndex + 1) + ' of ' + state.questions.length;
     document.getElementById('question-text').textContent = q.text;
-
     document.getElementById('optA-text').textContent = q.a;
     document.getElementById('optB-text').textContent = q.b;
 
-    // reset banner state — back to 50/50 split
-    ['optA','optB'].forEach(id => {
+    ['optA', 'optB'].forEach(id => {
       const el = document.getElementById(id);
-      el.classList.remove('locked', 'voted', 'you');
+      el.classList.remove('locked', 'voted', 'you', 'majority', 'correct', 'wrong');
       el.style.pointerEvents = 'auto';
-      el.style.opacity = '1';
-      el.style.borderColor = 'transparent';
-      el.style.flexGrow = '1';
+      el.style.opacity       = '1';
+      el.style.borderColor   = 'transparent';
+      el.style.flexGrow      = '1';
     });
 
-    // hide results, reset percentage badges
-    const r = document.getElementById('results');
-    r.classList.remove('visible');
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('nextRow').classList.remove('visible');
     document.getElementById('pctA').textContent = '0%';
     document.getElementById('pctB').textContent = '0%';
 
-    // mid-quiz ad — show after the configured question, then keep visible
-    const midAd = document.getElementById('ad-slot-mid');
-    if (currentIndex + 1 >= CONFIG.midAdAfterQuestion) {
-      midAd.classList.remove('hidden');
-    }
-
-    track('question_shown', {
-      question_id: q.id,
-      question_index: currentIndex,
-    });
+    updateHud();
+    track('question_shown', { question_id: q.id, question_index: state.currentIndex });
   }
 
-  function selectOption(choice) {
-    const q = currentQuiz.questions[currentIndex];
-    const timeSpent = Date.now() - questionShownAt;
+  function updateHud() {
+    document.getElementById('hud-score').textContent =
+      state.score + ' / ' + state.currentIndex;
+    document.getElementById('hud-streak').innerHTML = '🔥 ' + state.streak;
 
-    // lock banners + reveal results state
-    ['optA','optB'].forEach(id => {
+    const total = state.questions.length || 1;
+    document.getElementById('progress-fill').style.width =
+      (state.currentIndex / total) * 100 + '%';
+  }
+
+  /* ============================================================
+     10. Answering
+     ============================================================ */
+  async function selectOption(choice) {
+    const q = state.questions[state.currentIndex];
+    if (!q) return;
+    const timeSpent = Date.now() - state.questionShownAt;
+
+    // Lock both options
+    ['optA', 'optB'].forEach(id => {
       const el = document.getElementById(id);
       el.style.pointerEvents = 'none';
       el.classList.add('locked', 'voted');
-      el.style.opacity = '0.92';
     });
 
-    // increment fictive vote total + outline + YOU tag for chosen side
-    if (choice === 'a') {
-      q.votesA += 1;
-      document.getElementById('optA').classList.add('you');
-      document.getElementById('optA').style.borderColor = '#ff5544';
-      document.getElementById('optA').style.opacity = '1';
+    // Optimistic local +1, then fire-and-forget the atomic RPC
+    if (choice === 'a') q.votesA += 1;
+    else                q.votesB += 1;
+    castVoteRpc(q.id, choice).catch(err => console.warn('Vote RPC failed (continuing):', err));
+
+    const total    = q.votesA + q.votesB;
+    const pctA     = Math.round((q.votesA / total) * 100);
+    const pctB     = 100 - pctA;
+    const majority = q.votesA >= q.votesB ? 'a' : 'b';
+    const youGotIt = (choice === majority);
+
+    // Tag user's choice and the majority
+    document.getElementById(choice   === 'a' ? 'optA' : 'optB').classList.add('you');
+    document.getElementById(majority === 'a' ? 'optA' : 'optB').classList.add('majority');
+
+    if (youGotIt) {
+      document.getElementById(choice === 'a' ? 'optA' : 'optB').classList.add('correct');
+      document.getElementById(choice === 'a' ? 'optB' : 'optA').classList.add('wrong');
+      state.score  += 1;
+      state.streak += 1;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+      fireWin();
     } else {
-      q.votesB += 1;
-      document.getElementById('optB').classList.add('you');
-      document.getElementById('optB').style.borderColor = '#4a90ff';
-      document.getElementById('optB').style.opacity = '1';
+      document.getElementById(choice   === 'a' ? 'optA' : 'optB').classList.add('wrong');
+      document.getElementById(majority === 'a' ? 'optA' : 'optB').classList.add('correct');
+      state.streak = 0;
+      fireLose();
     }
 
-    const total = q.votesA + q.votesB;
-    const pctA = Math.round((q.votesA / total) * 100);
-    const pctB = 100 - pctA;
+    // Verdict banner
+    const verdict = document.getElementById('verdict');
+    if (youGotIt) {
+      verdict.className = 'verdict win';
+      const streakBonus = state.streak >= 3 ? ' · 🔥 Streak ' + state.streak + '!' : '';
+      verdict.innerHTML = '✅ MATCH! You picked with the crowd. <span class="points">+1 POINT</span>' + streakBonus;
+    } else {
+      verdict.className = 'verdict lose';
+      verdict.innerHTML = '❌ The crowd disagreed. <span class="points">+0 POINTS</span>';
+    }
 
-    // record answer
-    session.answers.push({ questionId: q.id, choice, pctA, pctB });
-    session.questionPath.push(q.id);
-
-    track('question_answered', {
-      question_id: q.id,
-      question_index: currentIndex,
-      choice,
-      pct_a: pctA,
-      pct_b: pctB,
-      time_spent_ms: timeSpent,
-    });
-
-    // show + animate results
     document.getElementById('voteTotal').textContent = total.toLocaleString();
     document.getElementById('results').classList.add('visible');
+    document.getElementById('nextRow').classList.add('visible');
 
+    // Bar split + percentages
     setTimeout(() => {
-      // Boxes physically resize to match the vote split (e.g. 70/30)
-      // flex-grow accepts unitless numbers, so the ratio works directly
       document.getElementById('optA').style.flexGrow = pctA;
       document.getElementById('optB').style.flexGrow = pctB;
       document.getElementById('pctA').textContent = pctA + '%';
       document.getElementById('pctB').textContent = pctB + '%';
     }, 80);
 
-    document.getElementById('nextBtn').textContent = 'Next Question →';
+    state.answers.push({
+      questionId:     q.id,
+      questionText:   q.text,
+      yourChoice:     choice,
+      majorityChoice: majority,
+      pctA, pctB,
+      gotPoint:       youGotIt
+    });
+
+    track('question_answered', {
+      topic:          state.currentTopic.slug,
+      question_id:    q.id,
+      question_index: state.currentIndex,
+      choice,
+      pct_a:          pctA,
+      pct_b:          pctB,
+      time_spent_ms:  timeSpent,
+      got_point:      youGotIt
+    });
+
+    document.getElementById('nextBtn').textContent =
+      (state.currentIndex === state.questions.length - 1)
+        ? 'See Final Score →'
+        : 'Next Question →';
+
+    updateHud();
   }
 
+  async function castVoteRpc(questionId, choice) {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/increment_vote', {
+      method:  'POST',
+      headers: SUPABASE_HEADERS,
+      body:    JSON.stringify({ q_id: questionId, choice })
+    });
+    if (!r.ok) throw new Error('RPC HTTP ' + r.status);
+    return r.json();
+  }
+
+  /* ============================================================
+     11. Feedback FX (win + lose)
+     ============================================================ */
+  function fireWin() {
+    flashScreen('greenFlash', 900);
+    pulseMain();
+    fireFireworks();
+    vibrate(60);
+  }
+
+  function fireLose() {
+    flashScreen('redFlash', 700);
+    shakeMain();
+    vibrate([40, 30, 40]);
+  }
+
+  function flashScreen(id, ms) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('fire');
+    void el.offsetWidth;          // force reflow so the animation can replay
+    el.classList.add('fire');
+    setTimeout(() => el.classList.remove('fire'), ms);
+  }
+
+  function pulseMain() { animateMain('pulse-win', 600); }
+  function shakeMain() { animateMain('shake',     450); }
+
+  function animateMain(cls, ms) {
+    const el = document.querySelector('main.container');
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), ms);
+  }
+
+  function vibrate(pattern) {
+    if (!navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+  }
+
+  function fireFireworks() {
+    if (typeof confetti !== 'function') return;     // CDN still loading
+    const colors = ['#50dc78', '#00c8ff', '#ffd166', '#ff7700', '#ff3388', '#ffffff'];
+
+    function shell(originX) {
+      const origin = {
+        x: originX !== undefined ? originX : 0.2 + Math.random() * 0.6,
+        y: 0.25 + Math.random() * 0.25
+      };
+      // Big round burst
+      confetti({ particleCount: 90, startVelocity: 30, spread: 360, ticks: 90,
+                 gravity: 0.9, decay: 0.92, scalar: 1.1, colors, origin });
+      // Inner sparkles for the twinkle
+      confetti({ particleCount: 30, startVelocity: 14, spread: 360, ticks: 70,
+                 gravity: 1.1, decay: 0.9,  scalar: 0.6, colors, origin });
+    }
+
+    shell(0.25);
+    setTimeout(() => shell(0.75), 220);
+    setTimeout(() => shell(0.5),  440);
+
+    // Streamers from the bottom corners
+    const streamers = { spread: 70, ticks: 100, gravity: 0.9, decay: 0.92, startVelocity: 45, colors };
+    confetti({ ...streamers, particleCount: 80, angle:  60, origin: { x: 0, y: 0.9 } });
+    confetti({ ...streamers, particleCount: 80, angle: 120, origin: { x: 1, y: 0.9 } });
+  }
+
+  /* ============================================================
+     12. Advancing + restarting + going home
+     ============================================================ */
   function nextQuestion() {
-    currentIndex++;
-    // continuous stream: when we reach the end of the pool, wrap around
-    if (currentIndex >= currentQuiz.questions.length) {
-      currentIndex = 0;
-      track('quiz_loop', { quiz_id: session.quizId });
+    state.currentIndex += 1;
+    if (state.currentIndex >= state.questions.length) {
+      showRecap();
+      return;
     }
     renderQuestion();
     window.scrollTo({ top: document.querySelector('.quiz-card').offsetTop - 20, behavior: 'smooth' });
   }
 
   function restart() {
-    track('restart_clicked');
-    startQuiz(session.quizId);
+    if (!state.currentTopic) { goHome(); return; }
+    track('restart_clicked', { topic: state.currentTopic.slug });
+    startQuiz(state.currentTopic.slug);
   }
 
-  function goToNextQuiz() {
-    track('next_quiz_clicked');
-    const ids = Object.keys(QUIZZES);
-    const idx = ids.indexOf(session.quizId);
-    const next = ids[(idx + 1) % ids.length];
-    startQuiz(next);
+  function goHome() {
+    track('back_to_picker');
+    clearHash();
+    showScreen('picker');
   }
 
-  // Track when visitors leave (drop-off attribution)
+  /* ============================================================
+     13. Recap
+     ============================================================ */
+  function showRecap() {
+    showScreen('recap');
+
+    const total = state.questions.length;
+    document.getElementById('final-score').textContent = state.score + ' / ' + total;
+
+    let emoji = '🎯', title = 'NICE RUN', blurb = "Here's how you matched up with the crowd.";
+    if (total > 0) {
+      const ratio = state.score / total;
+      if      (ratio === 1)   { emoji = '🏆'; title = 'PERFECT SCORE';      blurb = 'You matched the crowd on every single question.'; }
+      else if (ratio >= 0.8)  { emoji = '🔥'; title = 'CROWD CHAMPION';     blurb = "You're thinking like the majority. Strong run."; }
+      else if (ratio >= 0.5)  { emoji = '🎯'; title = 'MIDDLE OF THE PACK'; blurb = "Half-and-half — sometimes you went with the crowd, sometimes you didn't."; }
+      else if (ratio >= 0.2)  { emoji = '🤔'; title = 'CONTRARIAN STREAK';  blurb = 'You went against the grain more often than not. Independent thinker.'; }
+      else                    { emoji = '🙃'; title = 'AGAINST THE GRAIN';  blurb = 'You and the crowd were on different planets. Try another topic?'; }
+    }
+    document.getElementById('recap-emoji').textContent = emoji;
+    document.getElementById('recap-title').textContent = title;
+    document.getElementById('recap-blurb').textContent =
+      blurb + ' Best streak: 🔥 ' + state.bestStreak + '.';
+
+    const list = document.getElementById('recap-list');
+    list.innerHTML = '';
+    state.answers.forEach((a, i) => {
+      const row = document.createElement('div');
+      row.className = 'recap-row';
+      const yourLetter  = a.yourChoice.toUpperCase();
+      const crowdLetter = a.majorityChoice.toUpperCase();
+      const resClass    = a.gotPoint ? 'win' : 'lose';
+      const resText     = a.gotPoint ? '+1 ✓' : '0 ✗';
+      row.innerHTML =
+        '<div class="q"><strong>Q' + (i + 1) + '.</strong> You: <strong>' + yourLetter +
+        '</strong> · Crowd: <strong>' + crowdLetter + '</strong></div>' +
+        '<div class="res ' + resClass + '">' + resText + '</div>';
+      list.appendChild(row);
+    });
+
+    track('quiz_completed', {
+      topic: state.currentTopic && state.currentTopic.slug,
+      score: state.score,
+      total
+    });
+  }
+
+  /* ============================================================
+     14. Lifecycle hooks + boot
+     ============================================================ */
   window.addEventListener('beforeunload', () => {
     track('session_end', {
-      duration_ms: Date.now() - session.landedAt,
-      questions_answered: session.answers.length,
+      duration_ms:        Date.now() - session.landedAt,
+      questions_answered: state.answers.length
     });
   });
 
-  // Boot
-  startQuiz('villa_forest_eu');
+  loadTopics();
   </script>
 </body>
 </html>
