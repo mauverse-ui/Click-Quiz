@@ -940,7 +940,7 @@
     try {
       const url = SUPABASE_URL +
         '/rest/v1/quiz_topics' +
-        '?select=slug,title,subtitle,badge,emoji,is_trending' +
+        '?select=slug,title,subtitle,badge,emoji,is_trending,landing_path' +
         '&is_active=eq.true' +
         '&order=is_trending.desc,sort_order.asc';
       const r = await fetch(url, { headers: SUPABASE_HEADERS });
@@ -964,6 +964,19 @@
   /* ============================================================
      7. Picker rendering
      ============================================================ */
+
+  // A topic either lives on its own standalone landing page
+  // (landing_path set → navigate there, carrying UTM params) or
+  // plays inline in this SPA (legacy quizzes, no landing_path).
+  function openTopic(topic) {
+    if (topic && topic.landing_path) {
+      track('topic_clicked', { slug: topic.slug, target: topic.landing_path });
+      window.location.href = topic.landing_path + window.location.search;
+      return;
+    }
+    startQuiz(topic.slug);
+  }
+
   function renderPicker() {
     const featured = state.topics.find(t => t.is_trending) || state.topics[0];
     const others   = state.topics.filter(t => t !== featured);
@@ -973,7 +986,7 @@
     if (featured) {
       const card = document.createElement('div');
       card.className = 'featured-card';
-      card.onclick = () => startQuiz(featured.slug);
+      card.onclick = () => openTopic(featured);
       card.innerHTML =
         '<div class="glow"></div>' +
         '<div class="row">' +
@@ -1002,7 +1015,7 @@
       others.forEach(t => {
         const c = document.createElement('div');
         c.className = 'topic-card';
-        c.onclick = () => startQuiz(t.slug);
+        c.onclick = () => openTopic(t);
         c.innerHTML =
           '<div class="top">' +
             '<div class="emoji">' + (t.emoji || '❓') + '</div>' +

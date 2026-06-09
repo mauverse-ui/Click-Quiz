@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Harry Potter Quiz — Click Quiz</title>
+  <meta name="description" content="Ten impossible Harry Potter debates. Pick a side, then see whether the wizarding world agrees with you." />
+  <link rel="canonical" href="https://click-quiz.com/harry-potter.html" />
+
+  <!-- Social share -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="The Harry Potter Quiz" />
+  <meta property="og:description" content="Ten impossible Harry Potter debates. Pick a side, then see whether the wizarding world agrees with you." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Confetti library for win celebrations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js" defer></script>
+
+  <!--
+    ============================================================
+    CLICK QUIZ — single-quiz landing page (template)
+    ============================================================
+    Each quiz is its own self-contained landing page with its own
+    Supabase table + vote RPC, so paid traffic can be driven per-quiz
+    from affinity-targeted audiences with isolated, trackable data.
+
+    To spin up a new quiz, replace these tokens:
+      The Harry Potter Quiz        page + share title
+      Ten impossible Harry Potter debates. Pick a side, then see whether the wizarding world agrees with you.  meta description / share copy
+      Pick a side. See what the wizarding world <span class="accent">really thinks.</span>      one-line hook under the title
+      harry-potter         url slug (also names the file: <slug>.html)
+      HP         2-3 char logo mark
+      Harry Potter &middot; Fan favourites     small grey badge shown above the question
+      quiz_harry_potter        Supabase table  (convention: quiz_<slug>)
+      vote_harry_potter          Supabase vote fn (convention: vote_<slug>)
+
+    Supabase table columns (per quiz):
+      id uuid pk, position int, question_text text,
+      option_a text, option_b text,
+      votes_a int default 0, votes_b int default 0, created_at timestamptz
+    Vote RPC signature:
+      vote_harry_potter(qid uuid, choice text)  -- SECURITY DEFINER, +1 atomic
+    ============================================================
+  -->
+
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0a0e1a;
+    color: #fff;
+    line-height: 1.5;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+  body { padding-bottom: 90px; }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: -2;
+    background:
+      radial-gradient(circle at 18% 8%, rgba(255, 51, 51, 0.18), transparent 50%),
+      radial-gradient(circle at 82% 92%, rgba(0, 200, 255, 0.10), transparent 50%),
+      linear-gradient(180deg, #0a0e1a 0%, #131826 100%);
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 30px);
+  }
+
+  .container { max-width: 820px; margin: 0 auto; padding: 16px; }
+  .hidden    { display: none !important; }
+
+  .ad-slot {
+    background: repeating-linear-gradient(
+      45deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 10px,
+      rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 20px
+    );
+    border: 1px dashed rgba(255,255,255,0.15);
+    color: #6f7a8d;
+    font-size: 12px;
+    text-align: center;
+    padding: 14px;
+    border-radius: 10px;
+    margin: 16px 0;
+  }
+  .ad-slot.top    { min-height: 90px; }
+  .ad-slot.mid    { min-height: 250px; }
+  .ad-slot.footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    margin: 0; border-radius: 0; min-height: 60px;
+    background: #0a0e1a; border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+
+  header { text-align: center; padding: 28px 0 14px; }
+  .logo-row { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
+    clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; color: #fff;
+    transform: skewX(-8deg);
+    box-shadow: 0 4px 14px rgba(255, 51, 68, 0.35);
+  }
+  h1.brand-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(40px, 7vw, 64px);
+    letter-spacing: 1.5px;
+    background: linear-gradient(180deg, #fff 0%, #b8c5d6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1;
+  }
+  .brand-tagline {
+    font-size: clamp(14px, 2.2vw, 18px);
+    color: #8a96aa;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-top: 6px;
+  }
+  .brand-tagline .accent { color: #ff5544; }
+
+  .hud {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: rgba(20, 26, 42, 0.7);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    margin: 8px 0 16px;
+    backdrop-filter: blur(10px);
+  }
+  .hud-item { display: flex; flex-direction: column; align-items: flex-start; }
+  .hud-label { font-size: 10px; letter-spacing: 1.5px; color: #8a96aa; text-transform: uppercase; font-weight: 700; }
+  .hud-value { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1px; color: #fff; }
+  .hud-value.score {
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hud-streak { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: #ffaa44; font-weight: 800; }
+
+  .quiz-card {
+    background: rgba(20, 26, 42, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 28px 22px;
+    margin-top: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+  .quiz-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255, 51, 68, 0.12);
+    color: #ff5544;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 6px 12px; border-radius: 999px;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 51, 68, 0.25);
+  }
+  .badge.live::before {
+    content: ''; width: 7px; height: 7px;
+    background: #ff3344; border-radius: 50%;
+    animation: pulse 1.4s infinite;
+  }
+  .badge.neutral { background: rgba(255,255,255,0.06); color: #b8c5d6; border-color: rgba(255,255,255,0.12); }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+  .progress-wrap { background: rgba(255,255,255,0.06); border-radius: 999px; height: 6px; overflow: hidden; margin: 6px 0 18px; }
+  .progress-fill { background: linear-gradient(90deg, #ff3344 0%, #ff7700 100%); height: 100%; width: 0%; transition: width 280ms ease; }
+
+  .question-pre { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; color: #ff5544; font-size: 14px; margin-bottom: 4px; }
+  .question { font-size: clamp(18px, 3vw, 24px); font-weight: 800; line-height: 1.35; margin: 6px 0 22px; color: #f5f8ff; }
+
+  .matchup { display: flex; gap: 10px; align-items: stretch; min-height: 220px; }
+  @media (max-width: 600px) { .matchup { gap: 6px; min-height: 200px; } .vs-divider { padding: 0 2px; font-size: 18px; } }
+
+  .option-banner {
+    flex: 1 1 0; min-width: 0; position: relative; cursor: pointer;
+    border-radius: 16px; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 18px 16px; border: 2px solid transparent;
+    transition: flex-grow 1s cubic-bezier(0.2, 0.9, 0.3, 1),
+                transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    isolation: isolate; text-align: left; background: transparent; color: #fff; font-family: inherit;
+  }
+  @media (max-width: 600px) { .option-banner { padding: 14px 10px; } }
+
+  .option-banner.team-a { background: linear-gradient(135deg, #c8102e 0%, #7a0a1d 100%); }
+  .option-banner.team-b { background: linear-gradient(135deg, #003478 0%, #001a3d 100%); }
+  .option-banner.team-a:hover { border-color: #ff5566; }
+  .option-banner.team-b:hover { border-color: #4a90ff; }
+  .option-banner::before {
+    content: ''; position: absolute; inset: 0; z-index: -1;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.04) 0 8px, transparent 8px 24px);
+  }
+  .option-banner:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); }
+  .option-banner.locked  { cursor: default; transform: none; }
+  .option-banner.correct { box-shadow: 0 0 0 3px #50dc78, 0 12px 30px rgba(80, 220, 120, 0.3); }
+  .option-banner.wrong   { opacity: 0.55; }
+
+  .option-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .option-letter {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px;
+    width: 32px; height: 32px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.18); color: #fff; flex-shrink: 0;
+  }
+  .option-text {
+    font-size: clamp(15px, 2.4vw, 18px); font-weight: 800; letter-spacing: 0.3px;
+    color: #fff; line-height: 1.25; text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .option-percent {
+    font-family: 'Bebas Neue', sans-serif; font-size: clamp(56px, 14vw, 110px); letter-spacing: 1px;
+    color: #fff; line-height: 0.95; text-align: center; margin: auto 0;
+    opacity: 0; transform: scale(0.7); transition: opacity 0.45s ease, transform 0.45s ease;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.5); overflow: hidden;
+  }
+  .option-banner.revealed .option-percent { opacity: 1; transform: scale(1); }
+
+  .option-banner .you-tag, .option-banner .crown-tag { display: none; }
+  .option-banner.you      .you-tag   { display: inline-block; }
+  .option-banner.majority .crown-tag { display: inline-block; }
+  .you-tag { background: #50dc78; color: #062; font-size: 10px; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.8px; font-weight: 800; }
+  .crown-tag { font-size: 18px; }
+
+  .vs-divider {
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: #ff5544; letter-spacing: 2px; padding: 0 4px;
+  }
+
+  .results { display: none; margin-top: 18px; animation: fadeUp 0.4s ease; }
+  .results.visible { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  .verdict { text-align: center; padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-weight: 800; letter-spacing: 0.5px; }
+  .verdict.win     { background: rgba(80, 220, 120, 0.15); color: #80ffa0; border: 1px solid rgba(80, 220, 120, 0.4); }
+  .verdict.lose    { background: rgba(255, 80, 80, 0.10); color: #ff9090; border: 1px solid rgba(255, 80, 80, 0.3); }
+  .verdict.neutral { background: rgba(255,255,255,0.06); color: #cdd6e4; border: 1px solid rgba(255,255,255,0.14); }
+  .verdict .points { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; }
+
+  .vote-summary { text-align: center; color: #8a96aa; font-size: 13px; margin-top: 8px; }
+  .vote-summary strong { color: #fff; }
+
+  .next-row { display: none; justify-content: center; margin-top: 16px; }
+  .next-row.visible { display: flex; animation: fadeUp 0.4s ease; }
+  .btn-next {
+    background: linear-gradient(135deg, #ff3344 0%, #ff7700 100%);
+    color: #fff; border: none; font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 2px; padding: 14px 32px; border-radius: 12px; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease; box-shadow: 0 8px 20px rgba(255, 51, 68, 0.3);
+  }
+  .btn-next:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(255, 51, 68, 0.45); }
+
+  .recap-hero { text-align: center; padding: 6px 0 8px; }
+  .recap-hero .emoji { font-size: 56px; }
+  .recap-hero h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(28px, 5vw, 40px); letter-spacing: 2px; margin-top: 10px; }
+  .recap-hero .final-score {
+    font-family: 'Bebas Neue', sans-serif; font-size: clamp(56px, 14vw, 96px); letter-spacing: 2px;
+    background: linear-gradient(135deg, #50dc78 0%, #00c8ff 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; margin-top: 8px;
+  }
+  .recap-hero p { color: #8a96aa; margin-top: 4px; font-size: 15px; }
+
+  .recap-list { margin-top: 18px; }
+  .recap-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 6px; font-size: 13px; gap: 8px;
+  }
+  .recap-row .q { color: #d6dee8; flex: 1; padding-right: 12px; }
+  .recap-row .res { font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.5px; flex-shrink: 0; }
+  .recap-row .res.win     { background: rgba(80, 220, 120, 0.18); color: #80ffa0; }
+  .recap-row .res.lose    { background: rgba(255, 80, 80, 0.15); color: #ff9090; }
+  .recap-row .res.neutral { background: rgba(255,255,255,0.08); color: #b8c5d6; }
+
+  .recap-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.12);
+    font-family: inherit; font-size: 14px; font-weight: 700; padding: 12px 20px; border-radius: 10px; cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: #ff5544; }
+
+  .state-msg { text-align: center; padding: 60px 16px; color: #8a96aa; }
+  .state-msg .spinner {
+    display: inline-block; width: 32px; height: 32px;
+    border: 3px solid rgba(255,255,255,0.1); border-top-color: #ff5544; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin-bottom: 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align: center; color: #4a5568; font-size: 12px; padding: 24px 16px 80px; }
+  footer a { color: #6c7596; }
+
+  .flash-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 9999; opacity: 0; }
+  .flash-overlay.green {
+    background: radial-gradient(ellipse at center, rgba(40, 255, 120, 0) 0%, rgba(40, 220, 110, 0.55) 100%), rgba(60, 230, 130, 0.22);
+    box-shadow: inset 0 0 80px 20px rgba(40, 220, 110, 0.7);
+  }
+  .flash-overlay.red {
+    background: radial-gradient(ellipse at center, rgba(255, 0, 40, 0) 0%, rgba(255, 0, 40, 0.55) 100%), rgba(255, 30, 30, 0.25);
+    box-shadow: inset 0 0 80px 20px rgba(255, 0, 30, 0.7);
+  }
+  .flash-overlay.green.fire { animation: greenFlash 0.85s ease-out; }
+  .flash-overlay.red.fire   { animation: redFlash   0.65s ease-out; }
+  @keyframes greenFlash { 0% { opacity: 0; } 15% { opacity: 1; } 45% { opacity: 0.7; } 100% { opacity: 0; } }
+  @keyframes redFlash   { 0% { opacity: 0; } 15% { opacity: 1; } 40% { opacity: 0.6; } 100% { opacity: 0; } }
+
+  .pulse-win { animation: pulseWin 0.55s ease-out; }
+  @keyframes pulseWin { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.012); } }
+  .shake { animation: shake 0.4s ease-in-out; }
+  @keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+  </style>
+</head>
+<body>
+
+  <div class="flash-overlay green" id="greenFlash"></div>
+  <div class="flash-overlay red"   id="redFlash"></div>
+
+  <div class="container">
+    <div class="ad-slot top">[ Ad Slot — Top Banner 728×90 / 320×50 mobile ]</div>
+  </div>
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-mark">HP</div>
+    </div>
+    <h1 class="brand-title">The Harry Potter Quiz</h1>
+    <p class="brand-tagline">Pick a side. See what the wizarding world <span class="accent">really thinks.</span></p>
+  </header>
+
+  <main class="container">
+
+    <section id="screen-quiz">
+
+      <div id="quiz-loading" class="state-msg">
+        <div class="spinner"></div>
+        <div>Loading the latest crowd data…</div>
+      </div>
+
+      <div id="quiz-error" class="state-msg hidden">
+        <div>⚠️ Couldn't load this quiz. Check your connection and try again.</div>
+        <button class="btn-secondary" style="margin-top:12px;" onclick="startQuiz()">Retry</button>
+      </div>
+
+      <div id="quiz-content" class="hidden">
+        <div class="hud">
+          <div class="hud-item">
+            <span class="hud-label">Score</span>
+            <span class="hud-value score" id="hud-score">0 / 0</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Streak</span>
+            <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
+          </div>
+        </div>
+
+        <section class="quiz-card">
+          <div class="quiz-meta">
+            <span class="badge live">Live poll</span>
+            <span class="badge neutral">Harry Potter &middot; Fan favourites</span>
+          </div>
+
+          <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+
+          <div class="question-pre" id="question-pre">Question 1</div>
+          <h2 class="question" id="question-text">Loading…</h2>
+
+          <div class="matchup">
+            <button class="option-banner team-a" id="optA" onclick="selectOption('a')">
+              <div class="option-top">
+                <span class="option-letter">A</span>
+                <span>
+                  <span class="crown-tag">👑</span>
+                  <span class="you-tag">YOU</span>
+                </span>
+              </div>
+              <div class="option-percent" id="pctA">0%</div>
+              <div class="option-text" id="optA-text"></div>
+            </button>
+
+            <div class="vs-divider">VS</div>
+
+            <button class="option-banner team-b" id="optB" onclick="selectOption('b')">
+              <div class="option-top">
+                <span class="option-letter">B</span>
+                <span>
+                  <span class="crown-tag">👑</span>
+                  <span class="you-tag">YOU</span>
+                </span>
+              </div>
+              <div class="option-percent" id="pctB">0%</div>
+              <div class="option-text" id="optB-text"></div>
+            </button>
+          </div>
+
+          <section class="results" id="results">
+            <div class="verdict" id="verdict"></div>
+            <div class="vote-summary" id="voteSummary"></div>
+          </section>
+
+          <div class="ad-slot mid">[ Ad Slot — In-Quiz Native 300×250 ]</div>
+
+          <div class="next-row" id="nextRow">
+            <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next →</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="screen-recap" class="quiz-card hidden">
+      <div class="recap-hero">
+        <div class="emoji" id="recap-emoji">🏆</div>
+        <h2 id="recap-title">QUIZ COMPLETE</h2>
+        <div class="final-score" id="final-score">0 / 0</div>
+        <p id="recap-blurb">Here's how you matched up with the crowd.</p>
+      </div>
+
+      <div class="recap-list" id="recap-list"></div>
+
+      <div class="ad-slot mid">[ Ad Slot — Result Page 300×250 / 336×280 ]</div>
+
+      <div class="recap-actions">
+        <button class="btn-next" onclick="shareQuiz()">Share your score →</button>
+        <button class="btn-secondary" onclick="restart()">Play again</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>© 2026 Click Quiz · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Contact</a></p>
+    <p style="margin-top:6px;">Session ID: <span id="session-id-display">—</span></p>
+  </footer>
+
+  <div class="ad-slot footer">[ Ad Slot — Sticky Footer 320×50 / 728×90 ]</div>
+
+  <script>
+  /* ============================================================
+     CLICK QUIZ — single-quiz engine (template)
+     ============================================================ */
+
+  /* 1. Supabase config + THIS quiz's dedicated table / RPC */
+  const SUPABASE_URL = 'https://roayyfrgofikkvihimkf.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_x-Zx27BXNq0AVrIXWfe2uw_3cD3CjN0';
+  const SUPABASE_HEADERS = {
+    apikey:        SUPABASE_KEY,
+    Authorization: 'Bearer ' + SUPABASE_KEY,
+    'Content-Type':'application/json'
+  };
+  const QUIZ_TABLE = 'quiz_harry_potter';   // convention: quiz_<slug>
+  const VOTE_RPC   = 'vote_harry_potter';     // convention: vote_<slug>
+
+  // Bootstrap strategy: until a question reaches this many REAL votes, the
+  // displayed split is a believable seed baseline (seed_a/seed_b) PLUS the
+  // real votes counted so far. Once real votes cross the threshold, the seed
+  // is dropped entirely and only actual site data is shown. Real votes live
+  // in votes_a/votes_b and are never mixed into the stored seed.
+  const REVEAL_AT_REAL_VOTES = 100;
+
+  /* 2. Session, UTM capture, tracking (wire your pixel inside track()) */
+  const session = {
+    id:       'sess_' + Math.random().toString(36).slice(2, 11) + '_' + Date.now(),
+    landedAt: Date.now(),
+    utm:      getUtmParams()
+  };
+  document.getElementById('session-id-display').textContent = session.id;
+
+  function getUtmParams() {
+    const p = new URLSearchParams(window.location.search);
+    return {
+      source:   p.get('utm_source')   || 'direct',
+      campaign: p.get('utm_campaign') || null,
+      medium:   p.get('utm_medium')   || null,
+      content:  p.get('utm_content')  || null,
+      term:     p.get('utm_term')     || null
+    };
+  }
+
+  function track(eventName, payload = {}) {
+    console.log('[track]', { event: eventName, quiz: QUIZ_TABLE, session_id: session.id, ts: Date.now(), ...payload });
+    // ── Tracking pixel placeholder ───────────────────────────
+    // fbq('trackCustom', eventName, payload);
+    // gtag('event', eventName, payload);
+    // new Image().src = 'https://your-endpoint/px?e=' + encodeURIComponent(eventName);
+  }
+
+  track('session_start', { utm: session.utm, referrer: document.referrer });
+
+  /* 3. State */
+  const state = {
+    questions: [], currentIndex: 0, score: 0, scoredCount: 0,
+    streak: 0, bestStreak: 0, answers: [], questionShownAt: 0
+  };
+
+  /* 4. Screen manager */
+  function showScreen(name) {
+    ['screen-quiz', 'screen-recap'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    document.getElementById('screen-' + name).classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* 5. Load this quiz straight from its own table */
+  async function startQuiz() {
+    document.getElementById('quiz-loading').classList.remove('hidden');
+    document.getElementById('quiz-error').classList.add('hidden');
+    document.getElementById('quiz-content').classList.add('hidden');
+
+    state.questions = []; state.currentIndex = 0; state.score = 0; state.scoredCount = 0;
+    state.streak = 0; state.bestStreak = 0; state.answers = [];
+    showScreen('quiz');
+
+    try {
+      const url = SUPABASE_URL + '/rest/v1/' + QUIZ_TABLE +
+        '?select=id,question_text,option_a,option_b,votes_a,votes_b,seed_a,seed_b&order=position.asc';
+      const r = await fetch(url, { headers: SUPABASE_HEADERS });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const rows = await r.json();
+      state.questions = rows.map(row => ({
+        id: row.id, text: row.question_text, a: row.option_a, b: row.option_b,
+        votesA: row.votes_a || 0, votesB: row.votes_b || 0,
+        seedA:  row.seed_a  || 0, seedB:  row.seed_b  || 0
+      }));
+
+      if (state.questions.length === 0) {
+        document.getElementById('quiz-loading').classList.add('hidden');
+        document.getElementById('quiz-error').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('quiz-loading').classList.add('hidden');
+      document.getElementById('quiz-content').classList.remove('hidden');
+      track('quiz_started', { question_count: state.questions.length });
+      renderQuestion();
+    } catch (err) {
+      console.error('Question load failed:', err);
+      document.getElementById('quiz-loading').classList.add('hidden');
+      document.getElementById('quiz-error').classList.remove('hidden');
+    }
+  }
+
+  /* 6. Render question + HUD */
+  function renderQuestion() {
+    const q = state.questions[state.currentIndex];
+    state.questionShownAt = Date.now();
+
+    document.getElementById('question-pre').textContent =
+      'Question ' + (state.currentIndex + 1) + ' of ' + state.questions.length;
+    document.getElementById('question-text').textContent = q.text;
+    document.getElementById('optA-text').textContent = q.a;
+    document.getElementById('optB-text').textContent = q.b;
+
+    ['optA', 'optB'].forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('locked', 'voted', 'revealed', 'you', 'majority', 'correct', 'wrong');
+      el.style.pointerEvents = 'auto'; el.style.opacity = '1';
+      el.style.borderColor = 'transparent'; el.style.flexGrow = '1';
+    });
+
+    document.getElementById('results').classList.remove('visible');
+    document.getElementById('nextRow').classList.remove('visible');
+    document.getElementById('pctA').textContent = '0%';
+    document.getElementById('pctB').textContent = '0%';
+
+    updateHud();
+    track('question_shown', { question_id: q.id, question_index: state.currentIndex });
+  }
+
+  function updateHud() {
+    document.getElementById('hud-score').textContent = state.score + ' / ' + state.scoredCount;
+    document.getElementById('hud-streak').innerHTML = '🔥 ' + state.streak;
+    const total = state.questions.length || 1;
+    document.getElementById('progress-fill').style.width = (state.currentIndex / total) * 100 + '%';
+  }
+
+  /* 7. Answering */
+  async function selectOption(choice) {
+    const q = state.questions[state.currentIndex];
+    if (!q) return;
+    const timeSpent = Date.now() - state.questionShownAt;
+
+    ['optA', 'optB'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.pointerEvents = 'none';
+      el.classList.add('locked', 'voted');
+    });
+
+    // Record the real vote (optimistic local +1, then atomic RPC)
+    if (choice === 'a') q.votesA += 1; else q.votesB += 1;
+    castVoteRpc(q.id, choice).catch(err => console.warn('Vote RPC failed (continuing):', err));
+
+    // Display = seed baseline + real votes, UNTIL real votes cross the
+    // threshold — then drop the seed and show only actual site data.
+    const realTotal = q.votesA + q.votesB;
+    const liveData  = realTotal >= REVEAL_AT_REAL_VOTES;
+    const dispA     = liveData ? q.votesA : q.seedA + q.votesA;
+    const dispB     = liveData ? q.votesB : q.seedB + q.votesB;
+    const total     = dispA + dispB;
+    const pctA      = total ? Math.round((dispA / total) * 100) : 50;
+    const pctB      = 100 - pctA;
+    const majority  = dispA >= dispB ? 'a' : 'b';
+    const youGotIt  = (choice === majority);
+
+    document.getElementById('optA').classList.add('revealed');
+    document.getElementById('optB').classList.add('revealed');
+    document.getElementById(choice   === 'a' ? 'optA' : 'optB').classList.add('you');
+    document.getElementById(majority === 'a' ? 'optA' : 'optB').classList.add('majority');
+
+    const verdict = document.getElementById('verdict');
+    if (youGotIt) {
+      document.getElementById(choice === 'a' ? 'optA' : 'optB').classList.add('correct');
+      document.getElementById(choice === 'a' ? 'optB' : 'optA').classList.add('wrong');
+      state.score += 1; state.streak += 1;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+      fireWin();
+      const streakBonus = state.streak >= 3 ? ' · 🔥 Streak ' + state.streak + '!' : '';
+      verdict.className = 'verdict win';
+      verdict.innerHTML = '✅ MATCH! You picked with the crowd. <span class="points">+1 POINT</span>' + streakBonus;
+    } else {
+      document.getElementById(choice   === 'a' ? 'optA' : 'optB').classList.add('wrong');
+      document.getElementById(majority === 'a' ? 'optA' : 'optB').classList.add('correct');
+      state.streak = 0;
+      fireLose();
+      verdict.className = 'verdict lose';
+      verdict.innerHTML = '❌ The crowd disagreed. <span class="points">+0 POINTS</span>';
+    }
+    state.scoredCount += 1;
+
+    document.getElementById('voteSummary').innerHTML =
+      '<strong>' + total.toLocaleString() + '</strong> people have voted on this one';
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('nextRow').classList.add('visible');
+
+    setTimeout(() => {
+      document.getElementById('optA').style.flexGrow = pctA;
+      document.getElementById('optB').style.flexGrow = pctB;
+      document.getElementById('pctA').textContent = pctA + '%';
+      document.getElementById('pctB').textContent = pctB + '%';
+    }, 80);
+
+    state.answers.push({
+      questionId: q.id, questionText: q.text, yourChoice: choice,
+      majorityChoice: majority, pctA, pctB, counted: true, gotPoint: youGotIt
+    });
+    track('question_answered', {
+      question_id: q.id, question_index: state.currentIndex, choice,
+      pct_a: pctA, pct_b: pctB, live_data: liveData, real_votes: realTotal,
+      time_spent_ms: timeSpent, got_point: youGotIt
+    });
+
+    document.getElementById('nextBtn').textContent =
+      (state.currentIndex === state.questions.length - 1) ? 'See Final Score →' : 'Next →';
+    updateHud();
+  }
+
+  async function castVoteRpc(questionId, choice) {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/rpc/' + VOTE_RPC, {
+      method: 'POST', headers: SUPABASE_HEADERS,
+      body: JSON.stringify({ qid: questionId, choice })
+    });
+    if (!r.ok) throw new Error('RPC HTTP ' + r.status);
+    return r.json();
+  }
+
+  /* 8. Feedback FX */
+  function fireWin()  { flashScreen('greenFlash', 900); pulseMain(); fireFireworks(); vibrate(60); }
+  function fireLose() { flashScreen('redFlash', 700);   shakeMain(); vibrate([40, 30, 40]); }
+
+  function flashScreen(id, ms) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('fire'); void el.offsetWidth; el.classList.add('fire');
+    setTimeout(() => el.classList.remove('fire'), ms);
+  }
+  function pulseMain() { animateMain('pulse-win', 600); }
+  function shakeMain() { animateMain('shake', 450); }
+  function animateMain(cls, ms) {
+    const el = document.querySelector('main.container');
+    if (!el) return;
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), ms);
+  }
+  function vibrate(pattern) { if (!navigator.vibrate) return; try { navigator.vibrate(pattern); } catch (e) {} }
+
+  function fireFireworks() {
+    if (typeof confetti !== 'function') return;
+    const colors = ['#50dc78', '#00c8ff', '#ffd166', '#ff7700', '#ff3388', '#ffffff'];
+    function shell(originX) {
+      const origin = { x: originX !== undefined ? originX : 0.2 + Math.random() * 0.6, y: 0.25 + Math.random() * 0.25 };
+      confetti({ particleCount: 90, startVelocity: 30, spread: 360, ticks: 90, gravity: 0.9, decay: 0.92, scalar: 1.1, colors, origin });
+      confetti({ particleCount: 30, startVelocity: 14, spread: 360, ticks: 70, gravity: 1.1, decay: 0.9, scalar: 0.6, colors, origin });
+    }
+    shell(0.25); setTimeout(() => shell(0.75), 220); setTimeout(() => shell(0.5), 440);
+    const streamers = { spread: 70, ticks: 100, gravity: 0.9, decay: 0.92, startVelocity: 45, colors };
+    confetti({ ...streamers, particleCount: 80, angle: 60, origin: { x: 0, y: 0.9 } });
+    confetti({ ...streamers, particleCount: 80, angle: 120, origin: { x: 1, y: 0.9 } });
+  }
+
+  /* 9. Advance + restart */
+  function nextQuestion() {
+    state.currentIndex += 1;
+    if (state.currentIndex >= state.questions.length) { showRecap(); return; }
+    renderQuestion();
+    window.scrollTo({ top: document.querySelector('.quiz-card').offsetTop - 20, behavior: 'smooth' });
+  }
+  function restart() { track('restart_clicked'); startQuiz(); }
+
+  /* 10. Recap */
+  function showRecap() {
+    showScreen('recap');
+    const total   = state.questions.length;
+    const counted = state.scoredCount;   // questions that had enough real votes to score
+
+    let emoji = '🎯', title = 'NICE RUN', blurb = "Here's how you matched up with the crowd.";
+    if (counted === 0) {
+      // Whole run happened before any question crossed the reveal threshold.
+      document.getElementById('final-score').textContent = 'NEW';
+      emoji = '🌱'; title = 'EARLY VOTER';
+      blurb = "You're one of the first to play — there aren't enough votes to score yet. Your picks are counted; come back as the crowd grows.";
+    } else {
+      document.getElementById('final-score').textContent = state.score + ' / ' + counted;
+      const ratio = state.score / counted;
+      if      (ratio === 1)   { emoji = '🏆'; title = 'PERFECT SCORE';      blurb = 'You matched the crowd on every scored question.'; }
+      else if (ratio >= 0.8)  { emoji = '🔥'; title = 'CROWD CHAMPION';     blurb = "You're thinking like the majority. Strong run."; }
+      else if (ratio >= 0.5)  { emoji = '🎯'; title = 'MIDDLE OF THE PACK'; blurb = "Half-and-half — sometimes with the crowd, sometimes not."; }
+      else if (ratio >= 0.2)  { emoji = '🤔'; title = 'CONTRARIAN STREAK';  blurb = 'You went against the grain more often than not.'; }
+      else                    { emoji = '🙃'; title = 'AGAINST THE GRAIN';  blurb = 'You and the crowd were on different planets.'; }
+      if (counted < total) blurb += ' (' + (total - counted) + ' question' + (total - counted === 1 ? '' : 's') + ' still gathering votes.)';
+    }
+    document.getElementById('recap-emoji').textContent = emoji;
+    document.getElementById('recap-title').textContent = title;
+    document.getElementById('recap-blurb').textContent = blurb + ' Best streak: 🔥 ' + state.bestStreak + '.';
+
+    const list = document.getElementById('recap-list');
+    list.innerHTML = '';
+    state.answers.forEach((a, i) => {
+      const row = document.createElement('div');
+      row.className = 'recap-row';
+      let resClass, resText, crowd;
+      if (!a.counted) {
+        resClass = 'neutral'; resText = 'NEW'; crowd = '—';
+      } else {
+        resClass = a.gotPoint ? 'win' : 'lose';
+        resText  = a.gotPoint ? '+1 ✓' : '0 ✗';
+        crowd    = a.majorityChoice.toUpperCase();
+      }
+      row.innerHTML =
+        '<div class="q"><strong>Q' + (i + 1) + '.</strong> You: <strong>' + a.yourChoice.toUpperCase() +
+        '</strong> · Crowd: <strong>' + crowd + '</strong></div>' +
+        '<div class="res ' + resClass + '">' + resText + '</div>';
+      list.appendChild(row);
+    });
+
+    track('quiz_completed', { score: state.score, counted, total });
+  }
+
+  /* 11. Share */
+  function shareQuiz() {
+    const total = state.questions.length;
+    const text  = 'I scored ' + state.score + '/' + total + ' on "The Harry Potter Quiz" — can you beat me?';
+    const url   = window.location.href.split('#')[0];
+    track('share_clicked', { score: state.score, total });
+    if (navigator.share) {
+      navigator.share({ title: 'The Harry Potter Quiz', text, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(text + ' ' + url).then(
+        () => alert('Score copied to clipboard — paste it anywhere to challenge a friend!'), () => {}
+      );
+    }
+  }
+
+  /* 12. Boot */
+  window.addEventListener('beforeunload', () => {
+    track('session_end', { duration_ms: Date.now() - session.landedAt, questions_answered: state.answers.length });
+  });
+
+  startQuiz();
+  </script>
+</body>
+</html>
