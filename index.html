@@ -5,10 +5,9 @@
   <meta name="monetag" content="427d50977847c6d09d0a4e11c70e38b3" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Monetag in-page push banner (zone 11126868) -->
-  <script>(function(s){s.dataset.zone='11126868',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-  <!-- Popunder is intentionally NOT on the homepage — it only runs deep inside
-       a quiz (see armPopunder in quiz.html) so it never hijacks the first tap. -->
+  <!-- In-page push banner (zone 11126868) removed per request — top-of-page
+       placement was disruptive. Popunder is intentionally NOT on the homepage
+       either; it only runs deep inside a quiz (see armPopunder in quiz.html). -->
 
   <title>Social Quiz — Find Out What Others Think</title>
   <meta name="description" content="Pick a side. See what everyone else thinks. Match the crowd to score points." />
@@ -352,6 +351,12 @@
     margin: 4px 0 26px;
     color: #f5f8ff;
   }
+
+  /* Inline ad slot — sits right above the Next button. Invisible until filled. */
+  .ad-inline { margin: 20px auto 4px; display: flex; align-items: center; justify-content: center; }
+  .ad-inline:empty { display: none; }
+  .ad-inline-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #6f7a8d; text-align: center; margin-top: 14px; }
+  .ad-inline-wrap.is-empty .ad-inline-label { display: none; }
 
   /* ============================================================
      7. A/B match-up
@@ -771,6 +776,12 @@
 
         <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
 
+        <!-- Inline banner ad: rendered right above the Next button. -->
+        <div class="ad-inline-wrap is-empty">
+          <div class="ad-inline" id="ad-inline"></div>
+          <div class="ad-inline-label" id="ad-inline-label"></div>
+        </div>
+
         <div class="next-row" id="nextRow">
           <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
         </div>
@@ -819,6 +830,27 @@
     Authorization: 'Bearer ' + SUPABASE_KEY,
     'Content-Type':'application/json'
   };
+
+  /* ============================================================
+     1b. Inline vignette banner (Monetag) — surfaces in the inline slot,
+     just above the Next button, only AFTER the visitor selects an answer.
+     (300x250 wasn't offered by Monetag, so we use the vignette zone here.)
+     ============================================================ */
+  const BANNER_ZONE = '11126956';
+  const BANNER_SRC  = 'https://n6wxm.com/vignette.min.js';
+  let   bannerArmed = false;
+  function armInlineBanner() {
+    if (bannerArmed) return;
+    if (!BANNER_ZONE || !BANNER_SRC) return;   // no-op until the tag is set
+    bannerArmed = true;
+    const slot = document.getElementById('ad-inline');
+    const s = document.createElement('script');
+    s.dataset.zone = BANNER_ZONE; s.src = BANNER_SRC;
+    (slot || document.body).appendChild(s);
+    const wrap = document.querySelector('.ad-inline-wrap');
+    if (wrap) wrap.classList.remove('is-empty');
+    track('inline_banner_armed', { placement: 'inline_above_next' });
+  }
 
   /* ============================================================
      2. Session, UTM capture, tracking
@@ -1208,6 +1240,10 @@
     document.getElementById('voteTotal').textContent = total.toLocaleString();
     document.getElementById('results').classList.add('visible');
     document.getElementById('nextRow').classList.add('visible');
+
+    // Now that the visitor has answered, surface the 300x250 banner in the
+    // inline slot — sitting just above the Next button.
+    armInlineBanner();
 
     // Bar split + percentages
     setTimeout(() => {

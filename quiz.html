@@ -5,11 +5,11 @@
   <meta name="monetag" content="427d50977847c6d09d0a4e11c70e38b3" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Monetag in-page push banner (zone 11126868) -->
-  <script>(function(s){s.dataset.zone='11126868',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
   <!-- Monetag onclick / popunder (zone 11126905) is NOT loaded here on purpose.
        It is injected later by armPopunder() once the player reaches a deeper
-       question (see POPUNDER_ARM_INDEX), so it never fires on the first taps. -->
+       question (see POPUNDER_ARM_INDEX), so it never fires on the first taps.
+       The in-page push banner (zone 11126868) was removed per request — its
+       top-of-page placement was disruptive. -->
   <title>Click Quiz</title>
   <meta name="description" content="Match the crowd — guess what everyone else thinks." />
   <link rel="canonical" href="https://click-quiz.com/quiz.html" />
@@ -190,6 +190,13 @@
 
   .question-pre { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; color: #ff5544; font-size: 14px; margin-bottom: 4px; }
   .question { font-size: clamp(38px, 9vw, 56px); font-weight: 800; line-height: 1.12; margin: 4px 0 26px; color: #f5f8ff; letter-spacing: -0.5px; }
+
+  /* Inline ad slot — sits right above the Next button. Stays invisible until an
+     ad actually fills it, so there is never an empty grey box. */
+  .ad-inline { margin: 20px auto 4px; display: flex; align-items: center; justify-content: center; }
+  .ad-inline:empty { display: none; }
+  .ad-inline-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #6f7a8d; text-align: center; margin-top: 14px; }
+  .ad-inline-label:empty, .ad-inline-wrap.is-empty .ad-inline-label { display: none; }
 
   .matchup { display: flex; gap: 10px; align-items: stretch; min-height: 220px; }
   @media (max-width: 600px) { .matchup { gap: 6px; min-height: 200px; } .vs-divider { padding: 0 2px; font-size: 18px; } }
@@ -417,6 +424,12 @@
 
           <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
 
+          <!-- Inline banner ad: rendered right above the Next button. -->
+          <div class="ad-inline-wrap is-empty">
+            <div class="ad-inline" id="ad-inline"></div>
+            <div class="ad-inline-label" id="ad-inline-label"></div>
+          </div>
+
           <div class="next-row" id="nextRow">
             <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next →</button>
           </div>
@@ -495,20 +508,26 @@
     track('popunder_armed', { at_question_index: state.currentIndex });
   }
 
-  // Vignette (full-screen) ad: held back until the player finishes the quiz,
-  // then injected on the recap screen so it only appears at a natural pause —
-  // never during active play. Higher CPM, zero interruption to the questions.
-  const VIGNETTE_ZONE = '11126956';
-  const VIGNETTE_SRC  = 'https://n6wxm.com/vignette.min.js';
-  let   vignetteArmed = false;
-  function armVignette() {
-    if (vignetteArmed) return;
-    vignetteArmed = true;
+  // Inline vignette banner: injected into the slot that sits between the
+  // question/options and the Next button. It surfaces only AFTER the visitor
+  // selects an answer (results revealed), so the question stays clean while
+  // they're deciding. (300x250 wasn't offered by Monetag, so we use the
+  // vignette zone here.)
+  const BANNER_ZONE = '11126956';
+  const BANNER_SRC  = 'https://n6wxm.com/vignette.min.js';
+  let   bannerArmed = false;
+  function armInlineBanner() {
+    if (bannerArmed) return;
+    if (!BANNER_ZONE || !BANNER_SRC) return;   // no-op until the tag is set
+    bannerArmed = true;
+    const slot = document.getElementById('ad-inline');
     const s = document.createElement('script');
-    s.dataset.zone = VIGNETTE_ZONE;
-    s.src = VIGNETTE_SRC;
-    (document.body || document.documentElement).appendChild(s);
-    track('vignette_armed', { score: state.score });
+    s.dataset.zone = BANNER_ZONE;
+    s.src = BANNER_SRC;
+    (slot || document.body).appendChild(s);
+    const wrap = document.querySelector('.ad-inline-wrap');
+    if (wrap) wrap.classList.remove('is-empty');
+    track('inline_banner_armed', { placement: 'inline_above_next' });
   }
 
   /* 2. Session, UTM capture, tracking (wire your pixel inside track()) */
@@ -687,6 +706,10 @@
     document.getElementById('results').classList.add('visible');
     document.getElementById('nextRow').classList.add('visible');
 
+    // Now that the visitor has answered, surface the 300x250 banner in the
+    // inline slot — sitting just above the Next button.
+    armInlineBanner();
+
     setTimeout(() => {
       document.getElementById('optA').style.flexGrow = pctA;
       document.getElementById('optB').style.flexGrow = pctB;
@@ -764,7 +787,6 @@
   /* 10. Recap */
   function showRecap() {
     showScreen('recap');
-    armVignette();   // full-screen vignette fires at this natural end-of-quiz pause
     const total   = state.questions.length;
     const counted = state.scoredCount;   // questions that had enough real votes to score
 
