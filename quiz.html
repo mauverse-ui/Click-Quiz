@@ -7,8 +7,9 @@
 
   <!-- Monetag in-page push banner (zone 11126868) -->
   <script>(function(s){s.dataset.zone='11126868',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-  <!-- Monetag onclick / popunder (zone 11126905) -->
-  <script>(function(s){s.dataset.zone='11126905',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+  <!-- Monetag onclick / popunder (zone 11126905) is NOT loaded here on purpose.
+       It is injected later by armPopunder() once the player reaches a deeper
+       question (see POPUNDER_ARM_INDEX), so it never fires on the first taps. -->
   <title>Click Quiz</title>
   <meta name="description" content="Match the crowd — guess what everyone else thinks." />
   <link rel="canonical" href="https://click-quiz.com/quiz.html" />
@@ -188,7 +189,7 @@
   .progress-fill { background: linear-gradient(90deg, #ff3344 0%, #ff7700 100%); height: 100%; width: 0%; transition: width 280ms ease; }
 
   .question-pre { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; color: #ff5544; font-size: 14px; margin-bottom: 4px; }
-  .question { font-size: clamp(18px, 3vw, 24px); font-weight: 800; line-height: 1.35; margin: 6px 0 22px; color: #f5f8ff; }
+  .question { font-size: clamp(38px, 9vw, 56px); font-weight: 800; line-height: 1.12; margin: 4px 0 26px; color: #f5f8ff; letter-spacing: -0.5px; }
 
   .matchup { display: flex; gap: 10px; align-items: stretch; min-height: 220px; }
   @media (max-width: 600px) { .matchup { gap: 6px; min-height: 200px; } .vs-divider { padding: 0 2px; font-size: 18px; } }
@@ -357,24 +358,13 @@
       </div>
 
       <div id="quiz-content" class="hidden">
-        <div class="hud">
-          <div class="hud-item">
-            <span class="hud-label">Score</span>
-            <span class="hud-value score" id="hud-score">0 / 0</span>
-          </div>
-          <div class="hud-item">
-            <span class="hud-label">Streak</span>
-            <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
-          </div>
-        </div>
-
         <section class="quiz-card">
+          <!-- Topic / category sits at the very top so the player always
+               knows the subject before reading the (now much larger) question. -->
           <div class="quiz-meta">
             <span class="badge live">Live poll</span>
             <span class="badge neutral" id="badge-context"></span>
           </div>
-
-          <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
 
           <div class="question-pre" id="question-pre">Question 1</div>
           <h2 class="question" id="question-text">Loading…</h2>
@@ -411,6 +401,21 @@
             <div class="verdict" id="verdict"></div>
             <div class="vote-summary" id="voteSummary"></div>
           </section>
+
+          <!-- Score / streak + progress are secondary chrome: kept BELOW the
+               question and options so the question is the dominant element. -->
+          <div class="hud">
+            <div class="hud-item">
+              <span class="hud-label">Score</span>
+              <span class="hud-value score" id="hud-score">0 / 0</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">Streak</span>
+              <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
+            </div>
+          </div>
+
+          <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
 
           <div class="next-row" id="nextRow">
             <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next →</button>
@@ -472,6 +477,39 @@
   // is dropped entirely and only actual site data is shown. Real votes live
   // in votes_a/votes_b and are never mixed into the stored seed.
   const REVEAL_AT_REAL_VOTES = 100;
+
+  // Popunder gating: the onclick/popunder ad is held back until the player
+  // reaches this question (0-based index — 4 = question 5), so the first few
+  // questions are interruption-free and only engaged players ever see it.
+  const POPUNDER_ARM_INDEX = 4;
+  const POPUNDER_ZONE      = '11126905';
+  const POPUNDER_SRC       = 'https://al5sm.com/tag.min.js';
+  let   popunderArmed      = false;
+  function armPopunder() {
+    if (popunderArmed) return;
+    popunderArmed = true;
+    const s = document.createElement('script');
+    s.dataset.zone = POPUNDER_ZONE;
+    s.src = POPUNDER_SRC;
+    (document.body || document.documentElement).appendChild(s);
+    track('popunder_armed', { at_question_index: state.currentIndex });
+  }
+
+  // Vignette (full-screen) ad: held back until the player finishes the quiz,
+  // then injected on the recap screen so it only appears at a natural pause —
+  // never during active play. Higher CPM, zero interruption to the questions.
+  const VIGNETTE_ZONE = '11126956';
+  const VIGNETTE_SRC  = 'https://n6wxm.com/vignette.min.js';
+  let   vignetteArmed = false;
+  function armVignette() {
+    if (vignetteArmed) return;
+    vignetteArmed = true;
+    const s = document.createElement('script');
+    s.dataset.zone = VIGNETTE_ZONE;
+    s.src = VIGNETTE_SRC;
+    (document.body || document.documentElement).appendChild(s);
+    track('vignette_armed', { score: state.score });
+  }
 
   /* 2. Session, UTM capture, tracking (wire your pixel inside track()) */
   const session = {
@@ -578,6 +616,10 @@
 
     updateHud();
     track('question_shown', { question_id: q.id, question_index: state.currentIndex });
+
+    // Once the player is deep enough into the quiz, load the popunder so it
+    // can fire on a subsequent click — never during the opening questions.
+    if (state.currentIndex >= POPUNDER_ARM_INDEX) armPopunder();
   }
 
   function updateHud() {
@@ -722,6 +764,7 @@
   /* 10. Recap */
   function showRecap() {
     showScreen('recap');
+    armVignette();   // full-screen vignette fires at this natural end-of-quiz pause
     const total   = state.questions.length;
     const counted = state.scoredCount;   // questions that had enough real votes to score
 
