@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
   <meta charset="UTF-8" />
+  <meta name="monetag" content="427d50977847c6d09d0a4e11c70e38b3" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Social Quiz — Find Out What Others Think</title>
   <meta name="description" content="Pick a side. See what everyone else thinks. Match the crowd to score points." />
@@ -971,7 +972,13 @@
   function openTopic(topic) {
     if (topic && topic.landing_path) {
       track('topic_clicked', { slug: topic.slug, target: topic.landing_path });
-      window.location.href = topic.landing_path + window.location.search;
+      // Forward incoming UTM/query params, merging with any params the
+      // landing_path already has (e.g. /quiz.html?slug=knicks). Use '&' if
+      // the target already contains a '?', otherwise start the query with '?'.
+      const incoming = window.location.search ? window.location.search.slice(1) : '';
+      const sep = topic.landing_path.includes('?') ? '&' : '?';
+      const target = incoming ? topic.landing_path + sep + incoming : topic.landing_path;
+      window.location.href = target;
       return;
     }
     startQuiz(topic.slug);
