@@ -838,19 +838,17 @@
      ============================================================ */
   const BANNER_ZONE = '11126956';
   const BANNER_SRC  = 'https://n6wxm.com/vignette.min.js';
-  const BANNER_ARM_INDEX = 4;   // only arm from question 5 onward (0-based)
-  let   bannerArmed = false;
+  const BANNER_ARM_INDEXES = [2, 5];   // fire on question 3 and question 6 (0-based)
   function armInlineBanner() {
-    if (bannerArmed) return;
     if (!BANNER_ZONE || !BANNER_SRC) return;   // no-op until the tag is set
-    bannerArmed = true;
     const slot = document.getElementById('ad-inline');
+    if (slot) slot.innerHTML = '';             // clear any previous injection
     const s = document.createElement('script');
     s.dataset.zone = BANNER_ZONE; s.src = BANNER_SRC;
     (slot || document.body).appendChild(s);
     const wrap = document.querySelector('.ad-inline-wrap');
     if (wrap) wrap.classList.remove('is-empty');
-    track('inline_banner_armed', { placement: 'inline_above_next' });
+    track('inline_banner_armed', { placement: 'inline_above_next', at_question_index: state.currentIndex });
   }
 
   /* ============================================================
@@ -1242,9 +1240,9 @@
     document.getElementById('results').classList.add('visible');
     document.getElementById('nextRow').classList.add('visible');
 
-    // Surface the vignette only later in the quiz (from question 5 onward),
-    // after the visitor has answered — never in the opening questions.
-    if (state.currentIndex >= BANNER_ARM_INDEX) armInlineBanner();
+    // Surface the vignette at question 3 and again at question 6, after the
+    // visitor has answered — never in the very first questions.
+    if (BANNER_ARM_INDEXES.includes(state.currentIndex)) armInlineBanner();
 
     // Bar split + percentages
     setTimeout(() => {
