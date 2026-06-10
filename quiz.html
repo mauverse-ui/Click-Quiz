@@ -359,13 +359,8 @@
 
       <div id="quiz-content" class="hidden">
         <section class="quiz-card">
-          <!-- Topic / category sits at the very top so the player always
-               knows the subject before reading the (now much larger) question. -->
-          <div class="quiz-meta">
-            <span class="badge live">Live poll</span>
-            <span class="badge neutral" id="badge-context"></span>
-          </div>
-
+          <!-- Question sits right below the header: "Question X of 10" then the
+               big question, so it's instantly clear what's being asked. -->
           <div class="question-pre" id="question-pre">Question 1</div>
           <h2 class="question" id="question-text">Loading…</h2>
 
@@ -402,8 +397,13 @@
             <div class="vote-summary" id="voteSummary"></div>
           </section>
 
-          <!-- Score / streak + progress are secondary chrome: kept BELOW the
-               question and options so the question is the dominant element. -->
+          <!-- Topic / category + score / streak + progress are secondary chrome:
+               kept BELOW the question and options so the question dominates. -->
+          <div class="quiz-meta">
+            <span class="badge live">Live poll</span>
+            <span class="badge neutral" id="badge-context"></span>
+          </div>
+
           <div class="hud">
             <div class="hud-item">
               <span class="hud-label">Score</span>

@@ -345,10 +345,11 @@
   }
   .question-pre.green { color: #50dc78; }
   .question {
-    font-size: clamp(18px, 3vw, 24px);
+    font-size: clamp(38px, 9vw, 56px);
     font-weight: 800;
-    line-height: 1.35;
-    margin: 6px 0 22px;
+    line-height: 1.12;
+    letter-spacing: -0.5px;
+    margin: 4px 0 26px;
     color: #f5f8ff;
   }
 
@@ -710,26 +711,9 @@
          ============================================ -->
     <section id="screen-quiz" class="hidden">
 
-      <div class="hud">
-        <button class="hud-back" onclick="goHome()">← All quizzes</button>
-        <div class="hud-item">
-          <span class="hud-label">Score</span>
-          <span class="hud-value score" id="hud-score">0 / 0</span>
-        </div>
-        <div class="hud-item">
-          <span class="hud-label">Streak</span>
-          <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
-        </div>
-      </div>
-
       <section class="quiz-card">
-        <div class="quiz-meta">
-          <span class="badge live"   id="quiz-badge">Live</span>
-          <span class="badge neutral" id="quiz-context">Loading…</span>
-        </div>
-
-        <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
-
+        <!-- Question is the very first thing under the header: "Question X of 10"
+             then the big question, so it's immediately clear what's being asked. -->
         <div class="question-pre" id="question-pre">Question 1</div>
         <h2 class="question" id="question-text">Loading…</h2>
 
@@ -765,6 +749,27 @@
           <div class="verdict" id="verdict"></div>
           <div class="vote-summary"><strong id="voteTotal">0</strong> people have voted on this question</div>
         </section>
+
+        <!-- Topic badges, score/streak nav and progress live BELOW the question
+             now, so the question itself sits right under the header. -->
+        <div class="quiz-meta">
+          <span class="badge live"   id="quiz-badge">Live</span>
+          <span class="badge neutral" id="quiz-context">Loading…</span>
+        </div>
+
+        <div class="hud">
+          <button class="hud-back" onclick="goHome()">← All quizzes</button>
+          <div class="hud-item">
+            <span class="hud-label">Score</span>
+            <span class="hud-value score" id="hud-score">0 / 0</span>
+          </div>
+          <div class="hud-item">
+            <span class="hud-label">Streak</span>
+            <span class="hud-value"><span class="hud-streak" id="hud-streak">🔥 0</span></span>
+          </div>
+        </div>
+
+        <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
 
         <div class="next-row" id="nextRow">
           <button class="btn-next" id="nextBtn" onclick="nextQuestion()">Next Question →</button>
