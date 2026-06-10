@@ -838,6 +838,7 @@
      ============================================================ */
   const BANNER_ZONE = '11126956';
   const BANNER_SRC  = 'https://n6wxm.com/vignette.min.js';
+  const BANNER_ARM_INDEX = 4;   // only arm from question 5 onward (0-based)
   let   bannerArmed = false;
   function armInlineBanner() {
     if (bannerArmed) return;
@@ -1241,9 +1242,9 @@
     document.getElementById('results').classList.add('visible');
     document.getElementById('nextRow').classList.add('visible');
 
-    // Now that the visitor has answered, surface the 300x250 banner in the
-    // inline slot — sitting just above the Next button.
-    armInlineBanner();
+    // Surface the vignette only later in the quiz (from question 5 onward),
+    // after the visitor has answered — never in the opening questions.
+    if (state.currentIndex >= BANNER_ARM_INDEX) armInlineBanner();
 
     // Bar split + percentages
     setTimeout(() => {
@@ -1443,5 +1444,8 @@
 
   loadTopics();
   </script>
+
+  <!-- Monetag push notification (zone 11129517), loaded at the bottom of the page. -->
+  <script src="https://5gvci.com/act/files/tag.min.js?z=11129517" data-cfasync="false" async></script>
 </body>
 </html>

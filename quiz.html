@@ -6,8 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Monetag onclick / popunder (zone 11126905) is NOT loaded here on purpose.
-       It is injected later by armPopunder() once the player reaches a deeper
-       question (see POPUNDER_ARM_INDEX), so it never fires on the first taps.
+       It is injected by armPopunder() only once the player finishes the quiz
+       and reaches the recap screen, so it fires on a click at the very end of
+       the funnel — never during the questions.
        The in-page push banner (zone 11126868) was removed per request — its
        top-of-page placement was disruptive. -->
   <title>Click Quiz</title>
@@ -492,9 +493,8 @@
   const REVEAL_AT_REAL_VOTES = 100;
 
   // Popunder gating: the onclick/popunder ad is held back until the player
-  // reaches this question (0-based index — 4 = question 5), so the first few
-  // questions are interruption-free and only engaged players ever see it.
-  const POPUNDER_ARM_INDEX = 4;
+  // finishes the quiz and lands on the recap screen, so it only fires on a
+  // click at the very end of the funnel — never during the questions.
   const POPUNDER_ZONE      = '11126905';
   const POPUNDER_SRC       = 'https://al5sm.com/tag.min.js';
   let   popunderArmed      = false;
@@ -505,7 +505,7 @@
     s.dataset.zone = POPUNDER_ZONE;
     s.src = POPUNDER_SRC;
     (document.body || document.documentElement).appendChild(s);
-    track('popunder_armed', { at_question_index: state.currentIndex });
+    track('popunder_armed', { placement: 'end_of_quiz_recap' });
   }
 
   // Inline vignette banner: injected into the slot that sits between the
@@ -515,6 +515,7 @@
   // vignette zone here.)
   const BANNER_ZONE = '11126956';
   const BANNER_SRC  = 'https://n6wxm.com/vignette.min.js';
+  const BANNER_ARM_INDEX = 4;   // only arm from question 5 onward (0-based)
   let   bannerArmed = false;
   function armInlineBanner() {
     if (bannerArmed) return;
@@ -635,10 +636,6 @@
 
     updateHud();
     track('question_shown', { question_id: q.id, question_index: state.currentIndex });
-
-    // Once the player is deep enough into the quiz, load the popunder so it
-    // can fire on a subsequent click — never during the opening questions.
-    if (state.currentIndex >= POPUNDER_ARM_INDEX) armPopunder();
   }
 
   function updateHud() {
@@ -706,9 +703,9 @@
     document.getElementById('results').classList.add('visible');
     document.getElementById('nextRow').classList.add('visible');
 
-    // Now that the visitor has answered, surface the 300x250 banner in the
-    // inline slot — sitting just above the Next button.
-    armInlineBanner();
+    // Surface the vignette only later in the quiz (from question 5 onward),
+    // after the visitor has answered — never in the opening questions.
+    if (state.currentIndex >= BANNER_ARM_INDEX) armInlineBanner();
 
     setTimeout(() => {
       document.getElementById('optA').style.flexGrow = pctA;
@@ -787,6 +784,11 @@
   /* 10. Recap */
   function showRecap() {
     showScreen('recap');
+
+    // Quiz is over — arm the popunder so it fires on the visitor's next click
+    // (e.g. tapping a result/share button) at the natural end of the funnel.
+    armPopunder();
+
     const total   = state.questions.length;
     const counted = state.scoredCount;   // questions that had enough real votes to score
 
@@ -903,5 +905,8 @@
 
   init();
   </script>
+
+  <!-- Monetag push notification (zone 11129517), loaded at the bottom of the page. -->
+  <script src="https://5gvci.com/act/files/tag.min.js?z=11129517" data-cfasync="false" async></script>
 </body>
 </html>
