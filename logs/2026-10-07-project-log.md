@@ -85,3 +85,11 @@ PR #1 (https://github.com/mauverse-ui/Click-Quiz/pull/1) merged as 0e87eda2613e2
 Vercel automatically deployed that exact Git merge as dpl_9QESJNtSRwtDYypjcCUvP89QcpkE, Ready / Production, with www.click-quiz.com and click-quiz.com assigned. Deployment dashboard confirms Source main / 0e87eda. Public HTTP verification: homepage, preview, frozen manifest/image and original shared-shopping edition 200; the three removed pages 404. This resolves the risk that the old GitHub prototype could overwrite the fashion release. Subsequent documentation commits do not change gameplay.
 
 Remaining: reload Codex to expose installed Vercel plugin/MCP tools, then verify documentation search and authenticated team listing. CLI and OAuth are already verified. No paid AI worker, live advertising, paid acquisition or profit baseline is claimed.
+
+## Decision — traffic first; remove banners
+
+The user paused monetization before any ads were enabled and requested removal of every visible banner placeholder from the current fashion quiz, normal and preview. Removed the landing placeholder, question 3/6 placeholders, result placeholder and their spacing styles. Outfit images, edition manifests, friend sharing, consented analytics and database records are unchanged. Next phase: establish traffic and audience; no paid acquisition, social posting or campaigns authorized.
+
+Read-only GAM inspection before the stop verified Hombre Cave network 22773564060, active web AdX link pub-5283012077233459, default-for-dynamic-allocation off, empty Sites list, only three generic ad units across all inventory, and Policy center showing no current issues. This does not establish ClickQuiz approval or serving readiness. Public ads.txt returned 404. No ad units, tags, consent products, account settings or paid services were changed. Any future monetization must first undergo the user-requested strict review against current Google policies; the current analytics opt-in is not an advertising CMP. The policy review was stopped on the user's direction, not completed.
+
+Banner removal deployed through GitHub commit 622643d6ed4ca5c0fbc4966c6e3895dab1ac6855; Vercel dpl_Dk8L3GJjo5sCT4KDEd9HbCx2WdmF Ready / Production, assigned to both click-quiz.com domains. Six regression checks pass. Mobile preview landing, all ten questions and results verified without ad placeholders.
