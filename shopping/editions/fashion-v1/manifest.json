@@ -1,0 +1,159 @@
+{
+  "version": "fashion-v1",
+  "kind": "preferences",
+  "title": "How close is your style?",
+  "questions": [
+    {
+      "id": "look-01",
+      "title": "City plans. Which look?",
+      "image": "/shopping/editions/fashion-v1/images/look-01.webp",
+      "options": [
+        {
+          "label": "Sharp tailoring",
+          "detail": "A charcoal suit with loafers"
+        },
+        {
+          "label": "Dark florals",
+          "detail": "A floral midi dress with burgundy boots"
+        }
+      ]
+    },
+    {
+      "id": "look-02",
+      "title": "Your knitwear mood?",
+      "image": "/shopping/editions/fashion-v1/images/look-02.webp",
+      "options": [
+        {
+          "label": "A shot of purple",
+          "detail": "Purple knit and slim black trousers"
+        },
+        {
+          "label": "Soft head-to-toe grey",
+          "detail": "Grey knit, flowing trousers and trainers"
+        }
+      ]
+    },
+    {
+      "id": "look-03",
+      "title": "The layer you reach for?",
+      "image": "/shopping/editions/fashion-v1/images/look-03.webp",
+      "options": [
+        {
+          "label": "Cropped suede",
+          "detail": "Chestnut suede jacket with jeans"
+        },
+        {
+          "label": "The long coat",
+          "detail": "Camel wool coat with jeans"
+        }
+      ]
+    },
+    {
+      "id": "look-04",
+      "title": "Dinner at your favourite spot.",
+      "image": "/shopping/editions/fashion-v1/images/look-04.webp",
+      "options": [
+        {
+          "label": "Satin & soft knit",
+          "detail": "Burgundy satin skirt with grey knit"
+        },
+        {
+          "label": "Relaxed tailoring",
+          "detail": "Burgundy trousers with grey knit"
+        }
+      ]
+    },
+    {
+      "id": "look-05",
+      "title": "Let the sleeves do the talking?",
+      "image": "/shopping/editions/fashion-v1/images/look-05.webp",
+      "options": [
+        {
+          "label": "A little drama",
+          "detail": "Ivory balloon-sleeve blouse with black trousers"
+        },
+        {
+          "label": "Keep it clean",
+          "detail": "Ivory fitted knit with black trousers"
+        }
+      ]
+    },
+    {
+      "id": "look-06",
+      "title": "An evening invitation.",
+      "image": "/shopping/editions/fashion-v1/images/look-06.webp",
+      "options": [
+        {
+          "label": "Velvet dress",
+          "detail": "Black velvet midi dress and heels"
+        },
+        {
+          "label": "Evening tuxedo",
+          "detail": "Black tuxedo, silk top and heels"
+        }
+      ]
+    },
+    {
+      "id": "look-07",
+      "title": "Make your denim interesting.",
+      "image": "/shopping/editions/fashion-v1/images/look-07.webp",
+      "options": [
+        {
+          "label": "Utility layers",
+          "detail": "Olive utility jacket with jeans and trainers"
+        },
+        {
+          "label": "Rich brocade",
+          "detail": "Burgundy brocade jacket with jeans and flats"
+        }
+      ]
+    },
+    {
+      "id": "look-08",
+      "title": "One final styling touch.",
+      "image": "/shopping/editions/fashion-v1/images/look-08.webp",
+      "options": [
+        {
+          "label": "Tonal scarf",
+          "detail": "Brown blazer and tonal chocolate scarf"
+        },
+        {
+          "label": "Colour clash",
+          "detail": "Brown blazer and purple-red scarf"
+        }
+      ]
+    },
+    {
+      "id": "look-09",
+      "title": "Choose your silhouette.",
+      "image": "/shopping/editions/fashion-v1/images/look-09.webp",
+      "options": [
+        {
+          "label": "Asymmetric hem",
+          "detail": "Cream cardigan with asymmetric brown skirt"
+        },
+        {
+          "label": "A straight line",
+          "detail": "Cream cardigan with straight brown skirt"
+        }
+      ]
+    },
+    {
+      "id": "look-10",
+      "title": "Same outfit. Different energy.",
+      "image": "/shopping/editions/fashion-v1/images/look-10.webp",
+      "options": [
+        {
+          "label": "Clean trainers",
+          "detail": "Navy jacket and grey trousers with white trainers"
+        },
+        {
+          "label": "A little sparkle",
+          "detail": "Navy jacket and grey trousers with silver trainers"
+        }
+      ]
+    }
+  ],
+  "comparison": "identical-positions-v1",
+  "assetVersion": "fashion-v1"
+}
