@@ -7,13 +7,17 @@
 
 The accepted product is now ten visual women’s outfit choices with genuine friend style matching, not the historical grocery/deal quiz. Original AI-created imagery, no right/wrong taste. Verified live two-player comparison: seven matching choices produced 70%. Preview mode uses clearly labelled sample distributions and records no votes/analytics; links preserve preview context. Normal crowd stats use real opted-in ballots, with an early-launch state below twenty.
 
-Latest verified release: `dpl_9QESJNtSRwtDYypjcCUvP89QcpkE`. Detailed discussion: `logs/2026-10-07-project-log.md`.
+Latest verified gameplay release: `dpl_Dk8L3GJjo5sCT4KDEd9HbCx2WdmF`, GitHub commit `622643d6ed4ca5c0fbc4966c6e3895dab1ac6855` (all fashion banner placeholders removed). Detailed discussion: `logs/2026-10-07-project-log.md`.
 
 **Operational:** immutable edition manifests and image assets; actual question exposure/answer/load events; owner-only recent, historical and source/cohort reports; reviews after ten eligible starts, processed by a five-minute database schedule. Original shared editions remain available. Daily ninety-day raw-record cleanup is active at 03:25 UTC and its initial run removed zero expired attempts. Questions and unrelated legacy tables are excluded.
 
 **Prepared, not autonomous AI:** guarded 50/50 experiment functions and a dry-run-first candidate generator are implemented. No experiment is active. Paid AI execution and a deployed AI worker remain pending credentials, spending authorization and sufficient real data. The review schedule does not itself generate new questions.
 
-**Business baseline:** no paid traffic, live ads, measured revenue/profit or statistically useful player baseline. QA/preview are excluded from business claims. Ads remain placeholders. Prior account-access and source-sync limitations below remain relevant. Ninety-day analytics deletion is explicitly approved and now scheduled daily at 03:25 UTC; questions and legacy tables are excluded.
+**Business baseline:** no paid traffic, live ads, measured revenue/profit or statistically useful player baseline. QA/preview are excluded from business claims. Monetization is deferred. All visible fashion ad placeholders are removed; the next phase is traffic and audience development. No paid acquisition or posting is authorized. Source synchronization is resolved. Ninety-day analytics deletion is explicitly approved and now scheduled daily at 03:25 UTC; questions and legacy tables are excluded.
+
+## Latest direction — traffic first
+
+User explicitly paused monetization and requested removal of all banner placeholders from the current fashion landing, question and result screens, including preview mode. Outfit images, immutable question editions, sharing and analytics are preserved. Google Ad Manager inspection stopped without account changes.
 
 ## Latest handoff checkpoint
 
