@@ -7,7 +7,7 @@
 
 The accepted product is now ten visual women’s outfit choices with genuine friend style matching, not the historical grocery/deal quiz. Original AI-created imagery, no right/wrong taste. Verified live two-player comparison: seven matching choices produced 70%. Preview mode uses clearly labelled sample distributions and records no votes/analytics; links preserve preview context. Normal crowd stats use real opted-in ballots, with an early-launch state below twenty.
 
-Latest verified release: `dpl_7vMcUsDNStBj9ToAtXYru8CJTcw2`. Detailed discussion: `logs/2026-10-07-project-log.md`.
+Latest verified release: `dpl_9QESJNtSRwtDYypjcCUvP89QcpkE`. Detailed discussion: `logs/2026-10-07-project-log.md`.
 
 **Operational:** immutable edition manifests and image assets; actual question exposure/answer/load events; owner-only recent, historical and source/cohort reports; reviews after ten eligible starts, processed by a five-minute database schedule. Original shared editions remain available. Daily ninety-day raw-record cleanup is active at 03:25 UTC and its initial run removed zero expired attempts. Questions and unrelated legacy tables are excluded.
 
@@ -17,7 +17,10 @@ Latest verified release: `dpl_7vMcUsDNStBj9ToAtXYru8CJTcw2`. Detailed discussion
 
 ## Latest handoff checkpoint
 
-User is exploring audience growth separately. No paid traffic, posts or persona launched. Current fashion release is live; GitHub branch `codex/fashion-source-sync` is being assembled before merging, with only the explicitly approved obsolete `harry-potter.html`, `quiz.html` and `feed.xml` removed. Repository history is preserved.
+User is exploring audience growth separately. No paid traffic, posts or persona launched. Current fashion release is live and synchronized to GitHub main. PR #1 merged as `0e87eda2613e25e4c8b26387518c53ecf0719abe`; its Git-triggered Vercel production deployment is Ready and assigned to www.click-quiz.com. All 51 release files matched the reviewed release; six regression tests passed. Only the approved obsolete `harry-potter.html`, `quiz.html` and `feed.xml` were removed (public routes verified 404). Repository history and old shopping shared links are preserved.
+
+PR: https://github.com/mauverse-ui/Click-Quiz/pull/1
+Deployment: https://vercel.com/mauverse-uis-projects/click-quiz/9QESJNtSRwtDYypjcCUvP89QcpkE
 
 Vercel CLI installed at user scope and official Vercel plugin installed for Codex. MCP endpoint `https://mcp.vercel.com` configured in the user Codex config; OAuth succeeded. CLI 62.7.0 authenticated as mauverse-ui. Official vercel@openai-curated plugin is installed/enabled. A reload is needed to expose MCP documentation/team tools in this chat.
 
@@ -73,7 +76,7 @@ Historical Adsterra approval email reported to this chat is not current dashboar
 
 1. User reviews the live quiz and labelled ad placement on their phone. No second quiz or beauty/Instagram persona was built; those were exploration only.
 2. **Retention active:** the initial approval-review block was resolved by explicit user approval. `cq-analytics-retention` is active daily at 03:25 UTC, calling `cq_prune_analytics()` to delete CQ attempts older than 90 days and dependent events/ballots. Quiz versions/questions and unrelated legacy tables are excluded.
-3. **GitHub synchronization pending:** connector has read access but returns 403 for tree/branch writes; local Git has no remote write credentials. Direct official Vercel CLI deployment succeeded after user authorization. Source is preserved on local branch `codex/shopping-quiz-launch`. Remote `main` still has old commit `7046536f3124766b674af7c4b048a87ee1196268`; future Git auto-deployment could overwrite the direct release until source is synchronized. Do not overwrite unrelated repository changes.
+3. **GitHub synchronization resolved:** browser upload permission was enabled by the user. The complete release and assets, database scripts, tests, status and log were uploaded, byte-compared, and merged through PR #1. The resulting Git-triggered production deployment was verified against merge `0e87eda`; no force push or unrelated deletion occurred.
 4. Before commercial monetization, resolve hosting plan: current Vercel team is Hobby. Official policy restricts Hobby to personal non-commercial use (https://vercel.com/docs/plans/hobby ; https://vercel.com/docs/limits/fair-use-guidelines). No paid upgrade authorized or purchased. Real ad integration also needs provider-specific consent/site/inventory setup and a measured traffic budget.
 
 ## Historical context
