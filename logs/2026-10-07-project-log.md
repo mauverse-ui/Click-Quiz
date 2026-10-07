@@ -77,3 +77,11 @@ GitHub connector still returns 403; user signed into browser as repository owner
 Fashion release dpl_7vMcUsDNStBj9ToAtXYru8CJTcw2 serves the frozen edition and actual-exposure instrumentation. Database retention and five-minute review schedules are active; review cron success was verified at 10:15 UTC. No active experiment or paid AI worker. User enabled browser file access; GitHub uploads now succeed on codex/fashion-source-sync before merging a complete release. Vercel official plugin installed; MCP OAuth awaits the user.
 
 Vercel setup verified: CLI 62.7.0, authenticated mauverse-ui; official vercel@openai-curated plugin installed/enabled; https://mcp.vercel.com configured and OAuth login succeeded after user approval. New MCP tools require reload, so team/documentation tool calls remain unverified in this chat. Experiment rollback validation passed: 50/50 allocation, minimum sample hold, 200 mature starts per arm, guarded promotion and preserved old challenge, all fixtures rolled back.
+
+## Verified GitHub completion — 7 October 2026, 12:43 CEST
+
+PR #1 (https://github.com/mauverse-ui/Click-Quiz/pull/1) merged as 0e87eda2613e25e4c8b26387518c53ecf0719abe. Before merge, all 51 branch files matched the reviewed release byte for byte, all six regression checks passed, and the only deletions were the explicitly approved harry-potter.html, quiz.html and feed.xml. Git history is preserved.
+
+Vercel automatically deployed that exact Git merge as dpl_9QESJNtSRwtDYypjcCUvP89QcpkE, Ready / Production, with www.click-quiz.com and click-quiz.com assigned. Deployment dashboard confirms Source main / 0e87eda. Public HTTP verification: homepage, preview, frozen manifest/image and original shared-shopping edition 200; the three removed pages 404. This resolves the risk that the old GitHub prototype could overwrite the fashion release. Subsequent documentation commits do not change gameplay.
+
+Remaining: reload Codex to expose installed Vercel plugin/MCP tools, then verify documentation search and authenticated team listing. CLI and OAuth are already verified. No paid AI worker, live advertising, paid acquisition or profit baseline is claimed.
