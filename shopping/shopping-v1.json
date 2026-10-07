@@ -1,0 +1,206 @@
+{
+  "version": "shopping-v1",
+  "title": "How sharp are your shopping instincts?",
+  "questions": [
+    {
+      "id": "unit-price",
+      "title": "The bigger bag wins… right?",
+      "prompt": "Which bag costs less per 100 g?",
+      "icon": "🥣",
+      "options": [
+        {
+          "label": "Pocket oats",
+          "detail": "400 g",
+          "badge": "€1.80"
+        },
+        {
+          "label": "Family oats",
+          "detail": "750 g",
+          "badge": "€3.75"
+        }
+      ],
+      "answer": 0,
+      "explanation": "Pocket oats cost €0.45 per 100 g. Family oats cost €0.50 per 100 g. Bigger isn’t always cheaper."
+    },
+    {
+      "id": "delivery",
+      "title": "A sneaky checkout twist",
+      "prompt": "Same mug, same delivery date. Which order costs less in total?",
+      "icon": "☕",
+      "options": [
+        {
+          "label": "Mug Market",
+          "detail": "€8 + €4 delivery",
+          "badge": "€12 total"
+        },
+        {
+          "label": "Cup Corner",
+          "detail": "€11 + free delivery",
+          "badge": "€11 total"
+        }
+      ],
+      "answer": 1,
+      "explanation": "Cup Corner totals €11. Mug Market totals €12 once delivery is included."
+    },
+    {
+      "id": "budget",
+      "title": "Build your picnic",
+      "prompt": "You have €10. Which basket leaves at least €1 for the bus?",
+      "icon": "🧺",
+      "options": [
+        {
+          "label": "Basket A",
+          "detail": "Wrap €4 · juice €2 · fruit €3",
+          "badge": "3 items"
+        },
+        {
+          "label": "Basket B",
+          "detail": "Wrap €4 · juice €2 · cookies €3.50",
+          "badge": "3 items"
+        }
+      ],
+      "answer": 0,
+      "explanation": "Basket A costs €9 and leaves €1. Basket B costs €9.50 and leaves only €0.50."
+    },
+    {
+      "id": "bundle",
+      "title": "Three pairs. One decision.",
+      "prompt": "You need exactly 3 identical pairs of socks. Which offer costs less?",
+      "icon": "🧦",
+      "options": [
+        {
+          "label": "Single pairs",
+          "detail": "€4 each · buy 2, get 1 free",
+          "badge": "3 pairs"
+        },
+        {
+          "label": "Ready-made pack",
+          "detail": "3 pairs for €9",
+          "badge": "3 pairs"
+        }
+      ],
+      "answer": 0,
+      "explanation": "Buy 2, get 1 free costs 2 × €4 = €8 for three pairs. The pack costs €9."
+    },
+    {
+      "id": "discount",
+      "title": "Big sticker, small saving?",
+      "prompt": "These are identical lamps. Which sale price is lower?",
+      "icon": "💡",
+      "options": [
+        {
+          "label": "Shop A",
+          "detail": "Was €40 · now 25% off",
+          "badge": "25% OFF"
+        },
+        {
+          "label": "Shop B",
+          "detail": "Was €35 · now €7 off",
+          "badge": "€7 OFF"
+        }
+      ],
+      "answer": 1,
+      "explanation": "Shop A: €40 − €10 = €30. Shop B: €35 − €7 = €28. Compare the final price, not the sticker."
+    },
+    {
+      "id": "quantity",
+      "title": "The party needs 12",
+      "prompt": "You need at least 12 paper cups. Which purchase costs less?",
+      "icon": "🥤",
+      "options": [
+        {
+          "label": "Two small packs",
+          "detail": "6 cups per pack · €2 each",
+          "badge": "12 cups"
+        },
+        {
+          "label": "One large pack",
+          "detail": "15 cups · €4.50",
+          "badge": "15 cups"
+        }
+      ],
+      "answer": 0,
+      "explanation": "Two small packs provide all 12 cups for €4. The large pack costs €4.50, even if each cup is cheaper."
+    },
+    {
+      "id": "coupon",
+      "title": "Read the tiny print",
+      "prompt": "Your basket is €18 before delivery. Which coupon can you use?",
+      "icon": "🎟️",
+      "options": [
+        {
+          "label": "SAVE3",
+          "detail": "€3 off · items subtotal at least €20",
+          "badge": "Delivery doesn’t count"
+        },
+        {
+          "label": "SAVE2",
+          "detail": "€2 off · items subtotal at least €15",
+          "badge": "Delivery doesn’t count"
+        }
+      ],
+      "answer": 1,
+      "explanation": "An €18 items subtotal meets the €15 minimum for SAVE2, but not the €20 minimum for SAVE3."
+    },
+    {
+      "id": "refill",
+      "title": "Keep the bottle",
+      "prompt": "You already own the bottle. Which option costs less per 500 ml of soap?",
+      "icon": "🧴",
+      "options": [
+        {
+          "label": "Fresh bottle",
+          "detail": "500 ml for €3",
+          "badge": "Ready to use"
+        },
+        {
+          "label": "Refill pouch",
+          "detail": "1 litre for €5",
+          "badge": "Same soap"
+        }
+      ],
+      "answer": 1,
+      "explanation": "The refill contains two lots of 500 ml, so each costs €2.50. The fresh bottle costs €3 per 500 ml."
+    },
+    {
+      "id": "subscription",
+      "title": "Just one movie night",
+      "prompt": "You will use the service for exactly 1 month. Which plan has the lower total cost?",
+      "icon": "🍿",
+      "options": [
+        {
+          "label": "Monthly pass",
+          "detail": "€7 · no setup fee",
+          "badge": "Cancel after 1 month"
+        },
+        {
+          "label": "Starter deal",
+          "detail": "€4 for month 1 + €5 setup",
+          "badge": "Cancel after 1 month"
+        }
+      ],
+      "answer": 0,
+      "explanation": "The monthly pass costs €7. The starter deal costs €4 + €5 = €9 for that single month."
+    },
+    {
+      "id": "returns",
+      "title": "The jacket might go back",
+      "prompt": "Both jackets cost €30, with free delivery and a full item-price refund. If you return it, which shop costs you less?",
+      "icon": "🧥",
+      "options": [
+        {
+          "label": "Shop A",
+          "detail": "Return postage: €4",
+          "badge": "€30 item refund"
+        },
+        {
+          "label": "Shop B",
+          "detail": "Free returns",
+          "badge": "€30 item refund"
+        }
+      ],
+      "answer": 1,
+      "explanation": "Shop B refunds the €30 with no return cost. At Shop A, you still pay €4 return postage."
+    }
+  ]
+}
